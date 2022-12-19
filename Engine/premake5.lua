@@ -12,12 +12,14 @@ project "Mule Engine"
 		"include",
 		"../SubModules/entt/src",
 		"../Submodules/glm",
-		"../Submodules/Yaml/include"
+		"../Submodules/Yaml/include",
+		"../SubModules/glfw/include"
 	}
 
 	links
 	{
-		"yaml-cpp"
+		"yaml-cpp",
+		"glfw"
 	}
 	
 	files

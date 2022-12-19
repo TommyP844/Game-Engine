@@ -7,3 +7,6 @@
 [submodule "SubModules/Yaml"]
 	path = SubModules/Yaml
 	url = https://github.com/TommyP844/yaml-cpp
+[submodule "SubModules/glfw"]
+	path = SubModules/glfw
+	url = https://github.com/TommyP844/glfw
