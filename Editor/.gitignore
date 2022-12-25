@@ -1,1 +1,4 @@
 bin
+obj
+*.vcxproj
+*.vcxproj.user
