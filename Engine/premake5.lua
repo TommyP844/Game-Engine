@@ -7,9 +7,15 @@ project "Mule Engine"
 	pchheader "mulepch.h"
 	pchsource "src/mulepch.cpp"
 
+	defines
+	{
+		"YAML_CPP_STATIC_DEFINE"
+	}
+
 	includedirs 
 	{
 		"include",
+		"C:/VulkanSDK/1.3.231.1/Include",
 		"../SubModules/entt/src",
 		"../Submodules/glm",
 		"../Submodules/Yaml/include",
@@ -19,7 +25,8 @@ project "Mule Engine"
 	links
 	{
 		"yaml-cpp",
-		"glfw"
+		"glfw",
+		"C:/VulkanSDK/1.3.231.1/Lib/vulkan-1.lib"
 	}
 	
 	files
@@ -28,4 +35,10 @@ project "Mule Engine"
 		"include/**.inl",
 		"src/**.cpp"
 	}
+
+	filter "configurations:Debug"
+      defines { "DEBUG" }
+
+   filter "configurations:Release"
+      defines { "RELEASE" }
 	
