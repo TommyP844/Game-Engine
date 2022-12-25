@@ -1,6 +1,8 @@
 workspace "Mule"
 	configurations { "Debug", "Release" }
 	architecture "x64"
+
+	startproject "Mule Editor"
 	
 	-- SubModules
 	include "SubModules/Yaml/premake5.lua"
@@ -8,5 +10,6 @@ workspace "Mule"
 
 	-- My Projects
 	include "Engine/premake5.lua"
+	include "Editor/premake5.lua"
 
 
