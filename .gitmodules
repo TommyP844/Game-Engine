@@ -11,3 +11,6 @@
 [submodule "SubModules/glfw"]
 	path = SubModules/glfw
 	url = https://github.com/TommyP844/glfw
+[submodule "SubModules/stb"]
+	path = SubModules/stb
+	url = https://github.com/nothings/stb.git
