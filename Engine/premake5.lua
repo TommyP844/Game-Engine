@@ -22,7 +22,7 @@ project "Mule Engine"
 		"../Submodules/Yaml/include",
 		"../SubModules/glfw/include",
 		"../SubModules/stb",
-		"../SubModules/Assimp/include"
+		"../SubModules/Assimp/include",
 		"../Submodules/ImGui/ImGui"
 	}
 
