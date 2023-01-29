@@ -10,7 +10,6 @@ void Application::Init()
 	//Mule::Internal::ThreadPool::Init();
 	Mule::RenderAPI::Init(Mule::RenderAPI::API::VULKAN, mWindow->GetWindowPtr());
 
-
 	PushLayer(Mule::MakeRef<ImGuiLayer>());
 	PushLayer(Mule::MakeRef<SandBoxLayer>());
 }

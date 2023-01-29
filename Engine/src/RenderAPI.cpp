@@ -7,6 +7,11 @@
 
 #include <set>
 
+#include "imgui.h"
+
+#include "../ImGui/backends/imgui_impl_glfw.h"
+#include "../ImGui/backends/imgui_impl_vulkan.h"
+
 namespace Mule
 {
     
@@ -52,7 +57,14 @@ namespace Mule
     void RenderAPI::BeginFrame()
     {
         sVulkanData.LogicalDevice.waitForFences(sVulkanData.InFlightFences[sVulkanData.CurrentFrame], VK_TRUE, UINT64_MAX);
-        sVulkanData.ImageIndex = sVulkanData.LogicalDevice.acquireNextImageKHR(sVulkanData.SwapChain, UINT64_MAX, sVulkanData.ImageAvailableSemaphores[sVulkanData.CurrentFrame]).value;
+        
+        auto res = sVulkanData.LogicalDevice.acquireNextImageKHR(sVulkanData.SwapChain, UINT64_MAX, sVulkanData.ImageAvailableSemaphores[sVulkanData.CurrentFrame]);
+        sVulkanData.ImageIndex = res.value;
+        if (res.result == vk::Result::eErrorOutOfDateKHR)
+        {
+            RecreateSwapChain();
+        }
+
 
         sVulkanData.LogicalDevice.resetFences(sVulkanData.InFlightFences[sVulkanData.CurrentFrame]);
 
@@ -123,6 +135,112 @@ namespace Mule
         sRenderCommands.clear();
     }
 
+    void RenderAPI::InitImGui()
+    {
+        switch (sRenderAPI)
+        {
+            case RenderAPI::API::VULKAN:
+                InitImguiForVulkan();
+            break;
+        }
+    }
+
+    void RenderAPI::ShutdownImGui()
+    {
+        switch(sRenderAPI)
+        {
+        case API::VULKAN:
+            sVulkanData.LogicalDevice.destroyDescriptorPool(sVulkanData.ImguiPool);
+            ImGui_ImplVulkan_Shutdown();
+            ImGui::DestroyContext();
+            break;
+        }
+    }
+
+    void RenderAPI::InitImguiForVulkan()
+    {
+        //1: create descriptor pool for IMGUI
+    // the size of the pool is very oversize, but it's copied from imgui demo itself.
+        vk::DescriptorPoolSize pool_sizes[] =
+        {
+            { vk::DescriptorType::eSampler, 1000 },
+            { vk::DescriptorType::eCombinedImageSampler, 1000 },
+            { vk::DescriptorType::eSampledImage, 1000 },
+            { vk::DescriptorType::eStorageImage, 1000 },
+            { vk::DescriptorType::eUniformTexelBuffer, 1000 },
+            { vk::DescriptorType::eStorageTexelBuffer, 1000 },
+            { vk::DescriptorType::eUniformBuffer, 1000 },
+            { vk::DescriptorType::eStorageBuffer, 1000 },
+            { vk::DescriptorType::eUniformBufferDynamic, 1000 },
+            { vk::DescriptorType::eStorageBufferDynamic, 1000 },
+            { vk::DescriptorType::eInputAttachment, 1000 }
+        };
+        
+
+        vk::DescriptorPoolCreateInfo pool_info = {};
+        pool_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+        pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+        pool_info.maxSets = 1000;
+        pool_info.poolSizeCount = std::size(pool_sizes);
+        pool_info.pPoolSizes = pool_sizes;
+
+        sVulkanData.ImguiPool = sVulkanData.LogicalDevice.createDescriptorPool(pool_info);
+
+        // 2: initialize imgui library
+
+        //this initializes the core structures of imgui
+        ImGui::CreateContext();
+
+        //this initializes imgui for GLFW
+        ImGui_ImplGlfw_InitForVulkan(sWindow, true);
+
+        //this initializes imgui for Vulkan
+        ImGui_ImplVulkan_InitInfo init_info = {};
+        init_info.Instance = sVulkanData.Instance;
+        init_info.PhysicalDevice = sVulkanData.PhysicalDevice;
+        init_info.Device = sVulkanData.LogicalDevice;
+        init_info.Queue = sVulkanData.GraphicsQueue;
+        init_info.DescriptorPool = sVulkanData.ImguiPool;
+        init_info.MinImageCount = 3;
+        init_info.ImageCount = 3;
+        init_info.MSAASamples = (VkSampleCountFlagBits)sVulkanData.MSAASamples;
+
+        ImGui_ImplVulkan_Init(&init_info, sVulkanData.RenderPass);
+
+        //execute a gpu command to upload imgui font textures
+        auto cmd = BeginSingleTimeCommands();
+        ImGui_ImplVulkan_CreateFontsTexture(cmd);
+        EndSingleTimeCommands(cmd);
+
+        //clear font textures from cpu data
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    }
+
+    void RenderAPI::BeginImGuiFrame()
+    {
+        switch (sRenderAPI)
+        {
+        case API::VULKAN:
+            ImGui_ImplVulkan_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+
+            break;
+        }
+        ImGui::NewFrame();
+    }
+
+    void RenderAPI::EndImGuiFrame()
+    {
+        ImGui::Render();
+        switch (sRenderAPI)
+        {
+        case API::VULKAN:
+            ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), sVulkanData.ActiveCommandBuffer);
+            break;
+        }
+        ImGui::EndFrame();
+    }
+
     void RenderAPI::SwapBuffers()
     {
         vk::PresentInfoKHR presentInfo{};
@@ -137,16 +255,13 @@ namespace Mule
 
         presentInfo.pImageIndices = &sVulkanData.ImageIndex;
         
-        
-        vk::Result result = sVulkanData.PresentQueue.presentKHR(presentInfo);
-        
-        if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR) 
+        try
+        {
+            vk::Result result = sVulkanData.PresentQueue.presentKHR(presentInfo);
+        }
+        catch (vk::IncompatibleDisplayKHRError& e)
         {
             RecreateSwapChain();
-        }
-        else if (result != vk::Result::eSuccess) 
-        {
-            throw std::runtime_error("failed to present swap chain image!");
         }
 
         sVulkanData.CurrentFrame = (sVulkanData.CurrentFrame + 1) % BUFFER_COUNT;

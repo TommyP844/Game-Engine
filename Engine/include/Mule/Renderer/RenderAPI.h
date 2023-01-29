@@ -42,6 +42,7 @@ namespace Mule
 		vk::CommandPool CommandPool;
 
 		vk::DescriptorPool DescriptorPool;
+		vk::DescriptorPool ImguiPool;
 
 		uint32_t CurrentFrame = 0;
 
@@ -53,8 +54,6 @@ namespace Mule
 
 		vk::CommandBuffer ActiveCommandBuffer;
 	};
-
-	
 
 	class RenderAPI
 	{
@@ -77,6 +76,11 @@ namespace Mule
 		static void SubmitCommand(const std::function<void()>& command);
 		static void EndFrame();
 		static void ExecuteCommands();
+
+		static void InitImGui();
+		static void ShutdownImGui();
+		static void BeginImGuiFrame();
+		static void EndImGuiFrame();
 
 		static int GetCurrentSwapChainFrame();
 
@@ -121,6 +125,7 @@ namespace Mule
 
 		static void InitVulkan();
 		static void ShutdownVulkan();
+		static void InitImguiForVulkan();
 		static void CreateVulkanInstance();
 		static std::vector<const char*> GetRequiredVulkanExtensions();
 		static std::vector<const char*> GetRequiredDeviceExtensions();

@@ -3,3 +3,4 @@ obj
 *.vcxproj
 *.vcxproj.user
 *.vcxproj.filters
+imgui.ini

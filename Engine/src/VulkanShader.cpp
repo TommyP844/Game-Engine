@@ -138,8 +138,6 @@ namespace Mule
                 layouts.push_back(descSet);
             }
 
-
-
             pipelineLayoutInfo.setLayoutCount = shaderDesc.Buffers.size();
             pipelineLayoutInfo.pSetLayouts = &layouts[0];
         }
@@ -186,8 +184,6 @@ namespace Mule
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
         
-        
-
         shader->mPipeline = device.createGraphicsPipeline(VK_NULL_HANDLE, pipelineInfo).value;
 
         for (auto& module : modules)
