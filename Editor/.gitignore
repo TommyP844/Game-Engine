@@ -2,3 +2,4 @@ bin
 obj
 *.vcxproj
 *.vcxproj.user
+*.vcxproj.filters
