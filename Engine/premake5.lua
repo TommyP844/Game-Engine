@@ -23,6 +23,7 @@ project "Mule Engine"
 		"../SubModules/glfw/include",
 		"../SubModules/stb",
 		"../SubModules/Assimp/include"
+		"../Submodules/ImGui/ImGui"
 	}
 
 	links
@@ -30,6 +31,7 @@ project "Mule Engine"
 		"yaml-cpp",
 		"glfw",
 		"C:/VulkanSDK/1.3.231.1/Lib/vulkan-1.lib",
+		"ImGui"
 	}
 	
 	files

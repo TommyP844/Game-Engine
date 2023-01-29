@@ -21,6 +21,7 @@ project "Mule Editor"
 		"../Submodules/Yaml/include",
 		"../SubModules/glfw/include",
 		"C:/VulkanSDK/1.3.231.1/Include",
+		"../Submodules/ImGui/ImGui"
 	}
 
 	links

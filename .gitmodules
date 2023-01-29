@@ -17,3 +17,7 @@
 [submodule "SubModules/Assimp"]
 	path = SubModules/Assimp
 	url = https://github.com/TommyP844/assimp
+[submodule "SubModules/Imgui/Imgui"]
+	path = SubModules/Imgui/Imgui
+	url = git@github.com:TommyP844/imgui.git
+	branch = docking
