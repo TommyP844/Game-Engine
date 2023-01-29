@@ -62,13 +62,14 @@ namespace Mule::Internal::ThreadPool
 			std::lock_guard<std::mutex> lock(sThreadData.Mutex);
 			if (sThreadData.TaskQueue.size() > 0)
 			{
+				auto handle = std::this_thread::get_id();
 				std::function<void()> task;
 				{
 					task = sThreadData.TaskQueue.front();
 					sThreadData.TaskQueue.pop();
 				}
 				task();
-			}
+			}			
 		}
 	}
 

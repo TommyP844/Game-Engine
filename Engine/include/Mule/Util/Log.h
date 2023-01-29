@@ -14,9 +14,13 @@
 #include <ctime>
 
 
-#ifdef NDEBUG
+#ifndef DEBUG
 
-#define LOG(X, ...)
+#define LOG_MSG(X, ...)
+#define LOG_ERR(X, ...)
+#define LOG_WARN(X, ...)
+#define LOG_SUCCESS(X, ...)
+
 
 #else
 
@@ -145,6 +149,21 @@ namespace Mule::Internal
 		static std::wstring ToString(const std::wstring& wstr)
 		{
 			return wstr;
+		}
+
+		static std::wstring ToString(const std::string& str)
+		{
+			std::wstring temp(str.length(), L' ');
+			std::copy(str.begin(), str.end(), temp.begin());
+			return temp;
+		}
+
+		static std::wstring ToString(const char* cs)
+		{
+			std::string str(cs);
+			std::wstring temp(str.length(), L' ');
+			std::copy(str.begin(), str.end(), temp.begin());
+			return temp;
 		}
 
 		template<typename T>

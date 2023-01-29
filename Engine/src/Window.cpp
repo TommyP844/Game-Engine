@@ -24,11 +24,9 @@ namespace Mule {
 	{
 		Ref<Window> window = MakeRef<Window>();
 
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 		window->mWindow = glfwCreateWindow(width, height, title, NULL, NULL);
 
-		glfwSetCharCallback(window->mWindow, [](GLFWwindow* window, unsigned int c) {
-
-			});
 
 		return window;
 	}

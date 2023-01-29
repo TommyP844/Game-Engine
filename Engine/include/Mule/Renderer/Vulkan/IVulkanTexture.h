@@ -2,52 +2,26 @@
 
 #include "Mule/Ref.h"
 #include "Mule/Util/Log.h"
+#include "Mule/Renderer/Texture.h"
+
+#include <vulkan/vulkan.hpp>
 
 #include <filesystem>
 
 namespace Mule
 {
-	enum class TextureType : int
-	{
-		TEXTURE_1D,
-		TEXTURE_2D,
-		TEXTURE_3D,
-		TEXTURE_HDR,
-	};
 
-	enum class TextureFormat : int
-	{
-		FORMAT_R8,
-		FORMAT_RG8,
-		FORMAT_RGB8,
-		FORMAT_RGBA8,
-
-		FORMAT_R32F,
-		FORMAT_RG32F,
-		FORMAT_RGB32F,
-		FORMAT_RGBA32F,
-
-		FORMAT_R16F,
-		FORMAT_RG16F,
-		FORMAT_RGB16F,
-		FORMAT_RGBA16F,
-
-		FORMAT_R32I,
-		FORMAT_RG32I,
-		FORMAT_RGB32I,
-		FORMAT_RGBA32I
-
-	};
-
-	class ITexture
+	class IVulkanTexture : public Texture
 	{
 	public:
-		ITexture(TextureType texType) : mIsLoaded(false), mTextureType(texType) {}
-		virtual ~ITexture(){}
+		IVulkanTexture(TextureType texType, TextureFormat format, int width, int height, int depth, int mipLevels, int arrayLayers);
+		~IVulkanTexture();
 
-		virtual int GetWidth() const = 0;
-		virtual int GetHeight() const = 0;
-		virtual int GetDepth() const = 0;
+		int GetWidth() const { return mWidth; }
+		int GetHeight() const { return mHeight; }
+		int GetDepth() const { return mDepth; }
+		int GetMipLevels() const { return mMipLevels; }
+		int GetArrayLayers() const { return mArrayLayers; }
 		int GetComponents() const
 		{
 			switch (mFormat)
@@ -82,18 +56,24 @@ namespace Mule
 			}
 		}
 
-		virtual void SetData(void* data, int length) = 0;
-		virtual void* GetData() = 0;
-		
-		virtual Ref<ITexture> Load(const std::filesystem::path& filepath) = 0;
-		virtual Ref<ITexture> LoadAsync(const std::filesystem::path& filepath) = 0;
-		virtual void Save(const std::filesystem::path& filepath) = 0;
-		virtual void SaveAsync(const std::filesystem::path& filepath) = 0;
+		void SetData(void* data, int length);
+		void* GetData();
 
 		bool IsLoaded() const { return mIsLoaded; }
 	protected:
-		TextureFormat mFormat;
+
+		// Threadable function to create textures
+		void CreateTexture(void* data);
+
+	private:
+		const TextureFormat mFormat;
 		const TextureType mTextureType;
 		bool mIsLoaded;
+		const int mWidth, mHeight, mDepth, mMipLevels, mArrayLayers;
+		
+		vk::Image mTextureImage;
+		vk::DeviceMemory mTextureImageMemory;
+
+		uint64_t GetBytesPerPixel() const;
 	};
 }

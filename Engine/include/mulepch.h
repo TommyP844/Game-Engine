@@ -17,6 +17,7 @@
 
 #include <filesystem>
 #include <algorithm>
+#include <limits>
 
 
 // Streams
@@ -24,3 +25,7 @@
 #include <iostream>
 #include <ostream>
 #include <fstream>
+
+// Libs
+
+#include <vulkan/vulkan.hpp>
