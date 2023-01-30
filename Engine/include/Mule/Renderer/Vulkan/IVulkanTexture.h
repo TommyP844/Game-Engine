@@ -71,8 +71,8 @@ namespace Mule
 		bool mIsLoaded;
 		const int mWidth, mHeight, mDepth, mMipLevels, mArrayLayers;
 		
-		vk::Image mTextureImage;
-		vk::DeviceMemory mTextureImageMemory;
+		VkImage mTextureImage;
+		VkDeviceMemory mTextureImageMemory;
 
 		uint64_t GetBytesPerPixel() const;
 	};

@@ -12,6 +12,8 @@
 #include "../ImGui/backends/imgui_impl_glfw.h"
 #include "../ImGui/backends/imgui_impl_vulkan.h"
 
+#define VK_CHECK(x) if (x != VK_SUCCESS) { LOG_ERR(L"Vulkan Command Failed"); }
+
 namespace Mule
 {
     
@@ -49,50 +51,60 @@ namespace Mule
         }
     }
 
-    vk::RenderPass RenderAPI::GetRenderPass()
+    VkRenderPass RenderAPI::GetRenderPass()
     {
         return sVulkanData.RenderPass;
     }
 
     void RenderAPI::BeginFrame()
     {
-        sVulkanData.LogicalDevice.waitForFences(sVulkanData.InFlightFences[sVulkanData.CurrentFrame], VK_TRUE, UINT64_MAX);
+        VK_CHECK(vkWaitForFences(sVulkanData.LogicalDevice, 1, &sVulkanData.InFlightFences[sVulkanData.CurrentFrame], VK_TRUE, UINT64_MAX));
         
-        auto res = sVulkanData.LogicalDevice.acquireNextImageKHR(sVulkanData.SwapChain, UINT64_MAX, sVulkanData.ImageAvailableSemaphores[sVulkanData.CurrentFrame]);
-        sVulkanData.ImageIndex = res.value;
-        if (res.result == vk::Result::eErrorOutOfDateKHR)
+        VkResult result = vkAcquireNextImageKHR(
+            sVulkanData.LogicalDevice,
+            sVulkanData.SwapChain,
+            UINT64_MAX, 
+            sVulkanData.ImageAvailableSemaphores[sVulkanData.CurrentFrame],
+            VK_NULL_HANDLE,
+            &sVulkanData.ImageIndex);
+
+        if (result == VK_ERROR_OUT_OF_DATE_KHR)
         {
+            LOG_MSG(L"Resizing swapchain");
             RecreateSwapChain();
         }
 
-
-        sVulkanData.LogicalDevice.resetFences(sVulkanData.InFlightFences[sVulkanData.CurrentFrame]);
+        if (vkResetFences(sVulkanData.LogicalDevice, 1, &sVulkanData.InFlightFences[sVulkanData.CurrentFrame]) != VK_SUCCESS)
+        {
+            LOG_ERR(L"Failed to reset fences");
+        }
 
         sVulkanData.ActiveCommandBuffer = sVulkanData.CommandBuffers[sVulkanData.CurrentFrame];
-        sVulkanData.ActiveCommandBuffer.reset();
+        VK_CHECK(vkResetCommandBuffer(sVulkanData.ActiveCommandBuffer, 0));
         
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-        vk::CommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
-
-        sVulkanData.ActiveCommandBuffer.begin(beginInfo);
-
-        vk::RenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = vk::StructureType::eRenderPassBeginInfo;
+        if (vkBeginCommandBuffer(sVulkanData.ActiveCommandBuffer, &beginInfo) != VK_SUCCESS)
+        {
+            LOG_ERR(L"Failed to begin command buffer");
+        }
+        
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = sVulkanData.RenderPass;
         renderPassInfo.framebuffer = sVulkanData.SwapChainFramebuffers[sVulkanData.ImageIndex];
-        renderPassInfo.renderArea.offset = vk::Offset2D{ 0, 0 };
+        renderPassInfo.renderArea.offset = VkOffset2D{ 0, 0 };
         renderPassInfo.renderArea.extent = sVulkanData.SwapChainExtent;
 
-        std::array<vk::ClearValue, 2> clearValues{};
-        std::array<float, 4> clearColor = { 0.1f, 0.1f, 0.4f, 0.0f };
-        clearValues[0].color = vk::ClearColorValue(clearColor);
-        clearValues[1].depthStencil = vk::ClearDepthStencilValue{ 1.0f, 0 };
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = { 0.1f, 0.1f, 0.4f, 0.0f };
+        clearValues[1].depthStencil = VkClearDepthStencilValue{ 1.0f, 0 };
 
         renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
         renderPassInfo.pClearValues = clearValues.data();
 
-        sVulkanData.ActiveCommandBuffer.beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+        vkCmdBeginRenderPass(sVulkanData.ActiveCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     }
 
     void RenderAPI::SubmitCommand(const std::function<void()>& command)
@@ -102,14 +114,14 @@ namespace Mule
 
     void RenderAPI::EndFrame()
     {
-        sVulkanData.ActiveCommandBuffer.endRenderPass();
-        sVulkanData.ActiveCommandBuffer.end();
+        vkCmdEndRenderPass(sVulkanData.ActiveCommandBuffer);
+        vkEndCommandBuffer(sVulkanData.ActiveCommandBuffer);
 
-        vk::SubmitInfo submitInfo{};
-        submitInfo.sType = vk::StructureType::eSubmitInfo;
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         
-        vk::Semaphore waitSemaphores[] = { sVulkanData.ImageAvailableSemaphores[sVulkanData.CurrentFrame] };
-        vk::PipelineStageFlags waitStages[] = { vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        VkSemaphore waitSemaphores[] = { sVulkanData.ImageAvailableSemaphores[sVulkanData.CurrentFrame] };
+        VkPipelineStageFlags waitStages[] = { VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
@@ -117,12 +129,11 @@ namespace Mule
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &sVulkanData.CommandBuffers[sVulkanData.CurrentFrame];
 
-        vk::Semaphore signalSemaphores[] = { sVulkanData.RenderFinishedSemaphores[sVulkanData.CurrentFrame] };
+        VkSemaphore signalSemaphores[] = { sVulkanData.RenderFinishedSemaphores[sVulkanData.CurrentFrame] };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        sVulkanData.GraphicsQueue.submit(submitInfo, sVulkanData.InFlightFences[sVulkanData.CurrentFrame]);
-
+        vkQueueSubmit(sVulkanData.GraphicsQueue, 1, &submitInfo, sVulkanData.InFlightFences[sVulkanData.CurrentFrame]);
         
     }
 
@@ -150,7 +161,7 @@ namespace Mule
         switch(sRenderAPI)
         {
         case API::VULKAN:
-            sVulkanData.LogicalDevice.destroyDescriptorPool(sVulkanData.ImguiPool);
+            vkDestroyDescriptorPool(sVulkanData.LogicalDevice, sVulkanData.ImguiPool, nullptr);
             ImGui_ImplVulkan_Shutdown();
             ImGui::DestroyContext();
             break;
@@ -159,32 +170,30 @@ namespace Mule
 
     void RenderAPI::InitImguiForVulkan()
     {
-        //1: create descriptor pool for IMGUI
-    // the size of the pool is very oversize, but it's copied from imgui demo itself.
-        vk::DescriptorPoolSize pool_sizes[] =
+        VkDescriptorPoolSize pool_sizes[] =
         {
-            { vk::DescriptorType::eSampler, 1000 },
-            { vk::DescriptorType::eCombinedImageSampler, 1000 },
-            { vk::DescriptorType::eSampledImage, 1000 },
-            { vk::DescriptorType::eStorageImage, 1000 },
-            { vk::DescriptorType::eUniformTexelBuffer, 1000 },
-            { vk::DescriptorType::eStorageTexelBuffer, 1000 },
-            { vk::DescriptorType::eUniformBuffer, 1000 },
-            { vk::DescriptorType::eStorageBuffer, 1000 },
-            { vk::DescriptorType::eUniformBufferDynamic, 1000 },
-            { vk::DescriptorType::eStorageBufferDynamic, 1000 },
-            { vk::DescriptorType::eInputAttachment, 1000 }
+            { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+            { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+            { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+            { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
         };
         
 
-        vk::DescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = vk::StructureType::eDescriptorPoolCreateInfo;
-        pool_info.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+        VkDescriptorPoolCreateInfo pool_info = {};
+        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         pool_info.maxSets = 1000;
         pool_info.poolSizeCount = std::size(pool_sizes);
         pool_info.pPoolSizes = pool_sizes;
 
-        sVulkanData.ImguiPool = sVulkanData.LogicalDevice.createDescriptorPool(pool_info);
+        vkCreateDescriptorPool(sVulkanData.LogicalDevice, &pool_info, nullptr, &sVulkanData.ImguiPool);
 
         // 2: initialize imgui library
 
@@ -243,10 +252,10 @@ namespace Mule
 
     void RenderAPI::SwapBuffers()
     {
-        vk::PresentInfoKHR presentInfo{};
-        presentInfo.sType = vk::StructureType::ePresentInfoKHR;
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        vk::Semaphore signalSemaphores[] = { sVulkanData.RenderFinishedSemaphores[sVulkanData.CurrentFrame] };
+        VkSemaphore signalSemaphores[] = { sVulkanData.RenderFinishedSemaphores[sVulkanData.CurrentFrame] };
         presentInfo.waitSemaphoreCount = 1;
         presentInfo.pWaitSemaphores = signalSemaphores;
 
@@ -255,11 +264,8 @@ namespace Mule
 
         presentInfo.pImageIndices = &sVulkanData.ImageIndex;
         
-        try
-        {
-            vk::Result result = sVulkanData.PresentQueue.presentKHR(presentInfo);
-        }
-        catch (vk::IncompatibleDisplayKHRError& e)
+        VkResult result = vkQueuePresentKHR(sVulkanData.PresentQueue, &presentInfo);
+        if (result == VkResult::VK_ERROR_OUT_OF_DATE_KHR || result == VkResult::VK_SUBOPTIMAL_KHR)
         {
             RecreateSwapChain();
         }
@@ -272,17 +278,17 @@ namespace Mule
         return sVulkanData.CurrentFrame;
     }
 
-    const vk::Device& RenderAPI::GetDevice()
+    const VkDevice& RenderAPI::GetDevice()
     {
         return sVulkanData.LogicalDevice;
     }
 
-    const vk::PhysicalDevice& RenderAPI::GetPhysicalDevice()
+    const VkPhysicalDevice& RenderAPI::GetPhysicalDevice()
     {
         return sVulkanData.PhysicalDevice;
     }
 
-    void RenderAPI::CopyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size)
+    void RenderAPI::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -293,26 +299,26 @@ namespace Mule
         EndSingleTimeCommands(commandBuffer);
     }
 
-    void RenderAPI::CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory)
+    void RenderAPI::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
     {
-        vk::BufferCreateInfo bufferInfo{};
-        bufferInfo.sType = vk::StructureType::eBufferCreateInfo;
+        VkBufferCreateInfo bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferInfo.size = size;
         bufferInfo.usage = usage;
-        bufferInfo.sharingMode = vk::SharingMode::eExclusive;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        buffer = sVulkanData.LogicalDevice.createBuffer(bufferInfo);
+        vkCreateBuffer(sVulkanData.LogicalDevice, &bufferInfo, nullptr, &buffer);
         
         VkMemoryRequirements memRequirements;
         vkGetBufferMemoryRequirements(sVulkanData.LogicalDevice, buffer, &memRequirements);
-        vk::MemoryAllocateInfo allocInfo{};
-        allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        bufferMemory = sVulkanData.LogicalDevice.allocateMemory(allocInfo);
-        vk::DeviceSize offset = 0;
-        sVulkanData.LogicalDevice.bindBufferMemory(buffer, bufferMemory, offset);
+        vkAllocateMemory(sVulkanData.LogicalDevice, &allocInfo, nullptr, &bufferMemory);
+        VkDeviceSize offset = 0;
+        vkBindBufferMemory(sVulkanData.LogicalDevice, buffer, bufferMemory, offset);
     }
 	
     // VULKAN
@@ -327,9 +333,9 @@ namespace Mule
         //case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
         //    LOG_MSG(L"Validation Layer: {0}", pCallbackData->pMessage);
         //    break;
-        //case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-        //    LOG_WARN(L"Validation Layer: {0}", pCallbackData->pMessage);
-        //    break;
+        case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+            LOG_WARN(L"Validation Layer: {0}", pCallbackData->pMessage);
+            break;
         }
 
         return VK_FALSE;
@@ -365,44 +371,44 @@ namespace Mule
         //
         for (auto& imageView : sVulkanData.SwapChainImageViews)
         {
-            sVulkanData.LogicalDevice.destroyImageView(imageView);
+            vkDestroyImageView(sVulkanData.LogicalDevice, imageView, nullptr);
         }
 
-        sVulkanData.LogicalDevice.destroyImage(sVulkanData.ColorImage);
-        sVulkanData.LogicalDevice.destroyImage(sVulkanData.DepthImage);
+        vkDestroyImage(sVulkanData.LogicalDevice, sVulkanData.ColorImage, nullptr);
+        vkDestroyImage(sVulkanData.LogicalDevice, sVulkanData.DepthImage, nullptr);
 
-        sVulkanData.LogicalDevice.destroyImageView(sVulkanData.ColorImageView);
-        sVulkanData.LogicalDevice.destroyImageView(sVulkanData.DepthImageView);
+        vkDestroyImageView(sVulkanData.LogicalDevice, sVulkanData.ColorImageView, nullptr);
+        vkDestroyImageView(sVulkanData.LogicalDevice, sVulkanData.DepthImageView, nullptr);
 
-        sVulkanData.LogicalDevice.freeMemory(sVulkanData.ColorImageMemory);
-        sVulkanData.LogicalDevice.freeMemory(sVulkanData.DepthImageMemory);
+        vkFreeMemory(sVulkanData.LogicalDevice, sVulkanData.ColorImageMemory, nullptr);
+        vkFreeMemory(sVulkanData.LogicalDevice, sVulkanData.DepthImageMemory, nullptr);
 
         for (auto& frameBuffer : sVulkanData.SwapChainFramebuffers)
         {
-            sVulkanData.LogicalDevice.destroyFramebuffer(frameBuffer);
+            vkDestroyFramebuffer(sVulkanData.LogicalDevice, frameBuffer, nullptr);
         }
 
-        sVulkanData.LogicalDevice.destroyDescriptorSetLayout(sVulkanData.DesciptorLayout);
-        sVulkanData.LogicalDevice.destroyRenderPass(sVulkanData.RenderPass);
-        sVulkanData.LogicalDevice.destroySwapchainKHR(sVulkanData.SwapChain);
-        sVulkanData.Instance.destroySurfaceKHR(sVulkanData.Surface);
-        sVulkanData.LogicalDevice.destroy();
-        sVulkanData.Instance.destroy();
+        vkDestroyDescriptorSetLayout(sVulkanData.LogicalDevice, sVulkanData.DesciptorLayout, nullptr);
+        vkDestroyRenderPass(sVulkanData.LogicalDevice, sVulkanData.RenderPass, nullptr);
+        vkDestroySwapchainKHR(sVulkanData.LogicalDevice, sVulkanData.SwapChain, nullptr);
+        vkDestroySurfaceKHR(sVulkanData.Instance, sVulkanData.Surface, nullptr);
+        vkDestroyDevice(sVulkanData.LogicalDevice, nullptr);
+        vkDestroyInstance(sVulkanData.Instance, nullptr);
     }
 
 	void RenderAPI::CreateVulkanInstance()
 	{
-        vk::ApplicationInfo appInfo{};
+        VkApplicationInfo appInfo{};
         
-        appInfo.sType = vk::StructureType::eApplicationInfo;
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "Hello Triangle";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "No Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.apiVersion = VK_API_VERSION_1_0;
 
-        vk::InstanceCreateInfo createInfo{};
-        createInfo.sType = vk::StructureType::eInstanceCreateInfo;
+        VkInstanceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
 
         auto extensions = GetRequiredVulkanExtensions();
@@ -410,14 +416,12 @@ namespace Mule
         createInfo.ppEnabledExtensionNames = extensions.data();
 
 #ifdef DEBUG
-
-        vk::DebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         
-        
-        debugCreateInfo.sType = vk::StructureType::eDebugUtilsMessengerCreateInfoEXT;
-        debugCreateInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eError | vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning;
-        debugCreateInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-        debugCreateInfo.pfnUserCallback = debugCallback;
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+        debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT; 
+        debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+        debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        debugCreateInfo.pfnUserCallback = debugCallback; 
         
         auto validationLayers = GetValidationLayers();
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
@@ -429,7 +433,7 @@ namespace Mule
         createInfo.pNext = nullptr;
 #endif
 
-        if (vk::createInstance(&createInfo, nullptr, &sVulkanData.Instance) != vk::Result::eSuccess) {
+        if (vkCreateInstance(&createInfo, nullptr, &sVulkanData.Instance) != VkResult::VK_SUCCESS) {
             LOG_ERR(L"Failed to create vulkan instance");
             assert(0);
         }
@@ -467,17 +471,20 @@ namespace Mule
     
     void RenderAPI::PickPhysicalDevice()
     {
-        auto devices = sVulkanData.Instance.enumeratePhysicalDevices();
+        uint32_t count;
+        vkEnumeratePhysicalDevices(sVulkanData.Instance, &count, 0);
+        std::vector<VkPhysicalDevice> devices(count);
+        vkEnumeratePhysicalDevices(sVulkanData.Instance, &count, &devices[0]);
         LOG_MSG(L"Available devices");
         for (auto& device : devices)
         {
-            auto props = device.getProperties();
+            VkPhysicalDeviceProperties props;
+            vkGetPhysicalDeviceProperties(device, &props);
             
-            LOG_MSG(L"\t Device: {0}", std::string(props.deviceName.data()));
+            LOG_MSG(L"\t Device: {0}", std::string(props.deviceName));
             
         }
         sVulkanData.PhysicalDevice = devices[0];
-        LOG_MSG(L"Picking phyical device: {0}", std::string(sVulkanData.PhysicalDevice.getProperties().deviceName.data()));
 
         if (!sVulkanData.PhysicalDevice)
         {
@@ -490,24 +497,24 @@ namespace Mule
     {
         VulkanQueueFamilyIndices indices = FindQueueFamilies();
 
-        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = { indices.GraphicsIndex, indices.PresentIndex};
 
         float queuePriority = 1.0f;
         for (uint32_t queueFamily : uniqueQueueFamilies) {
-            vk::DeviceQueueCreateInfo queueCreateInfo{};
-            queueCreateInfo.sType = vk::StructureType::eDeviceQueueCreateInfo;
+            VkDeviceQueueCreateInfo queueCreateInfo{};
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queueCreateInfo.queueFamilyIndex = queueFamily;
             queueCreateInfo.queueCount = 1;
             queueCreateInfo.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
-        vk::PhysicalDeviceFeatures deviceFeatures{};
+        VkPhysicalDeviceFeatures deviceFeatures{};
         deviceFeatures.samplerAnisotropy = VK_TRUE;
 
-        vk::DeviceCreateInfo createInfo{};
-        createInfo.sType = vk::StructureType::eDeviceCreateInfo;
+        VkDeviceCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
         createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         createInfo.pQueueCreateInfos = queueCreateInfos.data();
         createInfo.pEnabledFeatures = &deviceFeatures;
@@ -523,26 +530,10 @@ namespace Mule
 #else
         createInfo.enabledLayerCount = 0;
 #endif
-        try
-        {
-            sVulkanData.LogicalDevice = sVulkanData.PhysicalDevice.createDevice(createInfo);
-        }
-        catch (const vk::SystemError& err)
-        {
-            std::cout << err.what() << std::endl;
-            assert(0);
-        }
+        vkCreateDevice(sVulkanData.PhysicalDevice, &createInfo, nullptr, &sVulkanData.LogicalDevice);
 
-        try
-        {
-            sVulkanData.GraphicsQueue = sVulkanData.LogicalDevice.getQueue(indices.GraphicsIndex, 0);
-            sVulkanData.PresentQueue = sVulkanData.LogicalDevice.getQueue(indices.PresentIndex, 0);
-        }
-        catch (const vk::SystemError& err)
-        {
-            std::cout << err.what() << std::endl;
-            assert(0);
-        }
+        vkGetDeviceQueue(sVulkanData.LogicalDevice, indices.PresentIndex, 0, &sVulkanData.PresentQueue);
+        vkGetDeviceQueue(sVulkanData.LogicalDevice, indices.GraphicsIndex, 0, &sVulkanData.GraphicsQueue);
     }
 
     RenderAPI::VulkanQueueFamilyIndices RenderAPI::FindQueueFamilies()
@@ -550,24 +541,25 @@ namespace Mule
         VulkanQueueFamilyIndices indices{};
 
         uint32_t queueFamilyCount = 0;
-        auto queueFamilyProperties = sVulkanData.PhysicalDevice.getQueueFamilyProperties();
-        
+        vkGetPhysicalDeviceQueueFamilyProperties(sVulkanData.PhysicalDevice, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(sVulkanData.PhysicalDevice, &queueFamilyCount, queueFamilies.data());
+
         int i = 0;
-        for (const auto& queueFamily : queueFamilyProperties) 
-        {
-            if (queueFamily.queueFlags & vk::QueueFlags::Flags(VK_QUEUE_GRAPHICS_BIT))
-            {
+        for (const auto& queueFamily : queueFamilies) {
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
                 indices.GraphicsIndex = i;
             }
 
-            uint32_t presentIndex = sVulkanData.PhysicalDevice.getSurfaceSupportKHR(i, sVulkanData.Surface);
-            
-            if (presentIndex == VK_TRUE) {
+            VkBool32 presentSupport = false;
+            vkGetPhysicalDeviceSurfaceSupportKHR(sVulkanData.PhysicalDevice, i, sVulkanData.Surface, &presentSupport);
+
+            if (presentSupport) {
                 indices.PresentIndex = i;
             }
 
-            if (indices.GraphicsIndex && indices.PresentIndex) {
-
+            if (indices.IsComplete()) {
                 break;
             }
 
@@ -581,53 +573,49 @@ namespace Mule
     {
         VulkanSwapChainSupportDetails swapChainSupport = QuerySwapChainSupportDetails();
 
-        vk::SurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
-        vk::PresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.PresentModes);
-        vk::Extent2D extent = ChooseSwapExtent(swapChainSupport.Capabilities);
+        VkSurfaceFormatKHR surfaceFormat = ChooseSwapSurfaceFormat(swapChainSupport.Formats);
+        VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.PresentModes);
+        VkExtent2D extent = ChooseSwapExtent(swapChainSupport.Capabilities);
 
         uint32_t imageCount = swapChainSupport.Capabilities.minImageCount + 1;
         if (swapChainSupport.Capabilities.maxImageCount > 0 && imageCount > swapChainSupport.Capabilities.maxImageCount) {
             imageCount = swapChainSupport.Capabilities.maxImageCount;
         }
 
-        vk::SwapchainCreateInfoKHR createInfo{};
-        createInfo.sType = vk::StructureType::eSwapchainCreateInfoKHR;
+        VkSwapchainCreateInfoKHR createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.surface = sVulkanData.Surface;
         createInfo.minImageCount = imageCount;
         createInfo.imageFormat = surfaceFormat.format;
         createInfo.imageColorSpace = surfaceFormat.colorSpace;
         createInfo.imageExtent = extent;
         createInfo.imageArrayLayers = 1;
-        createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
         VulkanQueueFamilyIndices indices = FindQueueFamilies();
         uint32_t queueFamilyIndices[] = { indices.GraphicsIndex, indices.PresentIndex };
 
         
         if (indices.GraphicsIndex != indices.PresentIndex) {
-            createInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
             createInfo.queueFamilyIndexCount = 2;
             createInfo.pQueueFamilyIndices = queueFamilyIndices;
         }
         else {
-            createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         }
 
         createInfo.preTransform = swapChainSupport.Capabilities.currentTransform;
-        createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         createInfo.presentMode = presentMode;
         createInfo.clipped = VK_TRUE;
 
-        try
-        {
-            sVulkanData.SwapChain = sVulkanData.LogicalDevice.createSwapchainKHR(createInfo);
-        }
-        catch (const vk::SystemError& err)
-        {
-            std::cerr << err.what() << std::endl;
-            assert(0);
-        }
-        sVulkanData.SwapChainImages = sVulkanData.LogicalDevice.getSwapchainImagesKHR(sVulkanData.SwapChain);
+        vkCreateSwapchainKHR(sVulkanData.LogicalDevice, &createInfo, nullptr, &sVulkanData.SwapChain);
+
+        uint32_t swapChainImages;
+        vkGetSwapchainImagesKHR(sVulkanData.LogicalDevice, sVulkanData.SwapChain, &swapChainImages, NULL);
+        sVulkanData.SwapChainImages.resize(imageCount);
+        vkGetSwapchainImagesKHR(sVulkanData.LogicalDevice, sVulkanData.SwapChain, &swapChainImages, &sVulkanData.SwapChainImages[0]);
 
         sVulkanData.SwapChainFormat = surfaceFormat.format;
         sVulkanData.SwapChainExtent = extent;
@@ -636,7 +624,7 @@ namespace Mule
 
         for (uint32_t i = 0; i < sVulkanData.SwapChainImages.size(); i++)
         {
-            sVulkanData.SwapChainImageViews[i] = CreateImageView(sVulkanData.SwapChainImages[i], sVulkanData.SwapChainFormat, vk::ImageAspectFlagBits::eColor, 1);
+            sVulkanData.SwapChainImageViews[i] = CreateImageView(sVulkanData.SwapChainImages[i], sVulkanData.SwapChainFormat, VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 1);
         }
     }
 
@@ -644,17 +632,31 @@ namespace Mule
     {
         VulkanSwapChainSupportDetails details;
 
-        details.Capabilities = sVulkanData.PhysicalDevice.getSurfaceCapabilitiesKHR(sVulkanData.Surface);    
-        details.Formats = sVulkanData.PhysicalDevice.getSurfaceFormatsKHR(sVulkanData.Surface);
-        details.PresentModes = sVulkanData.PhysicalDevice.getSurfacePresentModesKHR(sVulkanData.Surface);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(sVulkanData.PhysicalDevice, sVulkanData.Surface, &details.Capabilities);
+
+        uint32_t formatCount;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(sVulkanData.PhysicalDevice, sVulkanData.Surface, &formatCount, nullptr);
+
+        if (formatCount != 0) {
+            details.Formats.resize(formatCount);
+            vkGetPhysicalDeviceSurfaceFormatsKHR(sVulkanData.PhysicalDevice, sVulkanData.Surface, &formatCount, &details.Formats[0]);
+        }
+
+        uint32_t presentModeCount;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(sVulkanData.PhysicalDevice, sVulkanData.Surface, &presentModeCount, nullptr);
+
+        if (presentModeCount != 0) {
+            details.PresentModes.resize(presentModeCount);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(sVulkanData.PhysicalDevice, sVulkanData.Surface, &presentModeCount, &details.PresentModes[0]);
+        }
 
         return details;
     }
 
-    vk::SurfaceFormatKHR RenderAPI::ChooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats)
+    VkSurfaceFormatKHR RenderAPI::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
     {
         for (const auto& availableFormat : availableFormats) {
-            if (availableFormat.format == vk::Format::eR8G8B8A8Srgb && availableFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
+            if (availableFormat.format == VK_FORMAT_R8G8B8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
             {
                 return availableFormat;
             }
@@ -663,18 +665,18 @@ namespace Mule
         return availableFormats[0];
     }
 
-    vk::PresentModeKHR RenderAPI::ChooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes)
+    VkPresentModeKHR RenderAPI::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
     {
         for (const auto& availablePresentMode : availablePresentModes) {
-            if (availablePresentMode == vk::PresentModeKHR::eMailbox) {
+            if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
                 return availablePresentMode;
             }
         }
 
-        return vk::PresentModeKHR::eFifo;
+        return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    vk::Extent2D RenderAPI::ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities)
+    VkExtent2D RenderAPI::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
     {
 #ifdef max
 #undef max
@@ -698,11 +700,11 @@ namespace Mule
         }
     }
 
-    void RenderAPI::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, vk::DeviceMemory& imageMemory)
+    void RenderAPI::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
     {
-        vk::ImageCreateInfo imageInfo{};
-        imageInfo.sType = vk::StructureType::eImageCreateInfo;
-        imageInfo.imageType = vk::ImageType::e2D;
+        VkImageCreateInfo imageInfo{};
+        imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        imageInfo.imageType = VK_IMAGE_TYPE_2D;
         imageInfo.extent.width = width;
         imageInfo.extent.height = height;
         imageInfo.extent.depth = 1;
@@ -710,32 +712,31 @@ namespace Mule
         imageInfo.arrayLayers = 1;
         imageInfo.format = format;
         imageInfo.tiling = tiling;
-        imageInfo.initialLayout = vk::ImageLayout::eUndefined;
+        imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.usage = usage;
         imageInfo.samples = numSamples;
-        imageInfo.sharingMode = vk::SharingMode::eExclusive;
+        imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        image = sVulkanData.LogicalDevice.createImage(imageInfo);
+        vkCreateImage(sVulkanData.LogicalDevice, &imageInfo, nullptr, &image);
 
         VkMemoryRequirements memRequirements;
         vkGetImageMemoryRequirements(sVulkanData.LogicalDevice, image, &memRequirements);
 
-        vk::MemoryAllocateInfo allocInfo{};
-        allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
         allocInfo.allocationSize = memRequirements.size;
         allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-        imageMemory = sVulkanData.LogicalDevice.allocateMemory(allocInfo);
-        sVulkanData.LogicalDevice.bindImageMemory(image, imageMemory, vk::DeviceSize(0));
-
+        vkAllocateMemory(sVulkanData.LogicalDevice, &allocInfo, nullptr, &imageMemory);
+        vkBindImageMemory(sVulkanData.LogicalDevice, image, imageMemory, 0);
     }
     
-    vk::ImageView RenderAPI::CreateImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels)
+    VkImageView RenderAPI::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels)
     {
-        vk::ImageViewCreateInfo viewInfo{};
-        viewInfo.sType = vk::StructureType::eImageViewCreateInfo;
+        VkImageViewCreateInfo viewInfo{};
+        viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewInfo.image = image;
-        viewInfo.viewType = vk::ImageViewType::e2D;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.format = format;
         viewInfo.subresourceRange.aspectMask = aspectFlags;
         viewInfo.subresourceRange.baseMipLevel = 0;
@@ -743,74 +744,75 @@ namespace Mule
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 1;
 
-        vk::ImageView imageView = sVulkanData.LogicalDevice.createImageView(viewInfo);
+        VkImageView imageView;
+        vkCreateImageView(sVulkanData.LogicalDevice, &viewInfo, nullptr, &imageView);
 
         return imageView;
     }
     
     void RenderAPI::CreateRenderPass()
     {
-        vk::AttachmentDescription colorAttachment{};
+        VkAttachmentDescription colorAttachment{};
         colorAttachment.format = sVulkanData.SwapChainFormat;
         colorAttachment.samples = sVulkanData.MSAASamples;
-        colorAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-        colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
-        colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-        colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-        colorAttachment.initialLayout = vk::ImageLayout::eUndefined; // undefined
-        colorAttachment.finalLayout = vk::ImageLayout::eColorAttachmentOptimal; // color optimal
+        colorAttachment.loadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
+        colorAttachment.storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachment.stencilLoadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachment.stencilStoreOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachment.initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED; // undefined
+        colorAttachment.finalLayout = VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // color optimal
                 
-        vk::AttachmentDescription depthAttachment{};
+        VkAttachmentDescription depthAttachment{};
         depthAttachment.format = FindDepthFormat();
         depthAttachment.samples = sVulkanData.MSAASamples;
-        depthAttachment.loadOp = vk::AttachmentLoadOp::eClear;
-        depthAttachment.storeOp = vk::AttachmentStoreOp::eDontCare;
-        depthAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-        depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-        depthAttachment.initialLayout = vk::ImageLayout::eUndefined;
-        depthAttachment.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+        depthAttachment.loadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.stencilLoadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depthAttachment.stencilStoreOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.finalLayout = VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         
-        vk::AttachmentDescription colorAttachmentResolve{};
+        VkAttachmentDescription colorAttachmentResolve{};
         colorAttachmentResolve.format = sVulkanData.SwapChainFormat;
-        colorAttachmentResolve.samples = vk::SampleCountFlagBits::e1;
-        colorAttachmentResolve.loadOp = vk::AttachmentLoadOp::eDontCare;
-        colorAttachmentResolve.storeOp = vk::AttachmentStoreOp::eStore;
-        colorAttachmentResolve.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-        colorAttachmentResolve.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-        colorAttachmentResolve.initialLayout = vk::ImageLayout::eUndefined;
-        colorAttachmentResolve.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+        colorAttachmentResolve.samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+        colorAttachmentResolve.loadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachmentResolve.storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
+        colorAttachmentResolve.stencilLoadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        colorAttachmentResolve.stencilStoreOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        colorAttachmentResolve.initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+        colorAttachmentResolve.finalLayout = VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
         
-        vk::AttachmentReference colorAttachmentRef{};
+        VkAttachmentReference colorAttachmentRef{};
         colorAttachmentRef.attachment = 0;
-        colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+        colorAttachmentRef.layout = VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         
-        vk::AttachmentReference depthAttachmentRef{};
+        VkAttachmentReference depthAttachmentRef{};
         depthAttachmentRef.attachment = 1;
-        depthAttachmentRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+        depthAttachmentRef.layout = VkImageLayout::VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-        vk::AttachmentReference colorAttachmentResolveRef{};
+        VkAttachmentReference colorAttachmentResolveRef{};
         colorAttachmentResolveRef.attachment = 2;
-        colorAttachmentResolveRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+        colorAttachmentResolveRef.layout = VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        vk::SubpassDescription subpass{};
-        subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+        VkSubpassDescription subpass{};
+        subpass.pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
         subpass.pDepthStencilAttachment = &depthAttachmentRef;
         subpass.pResolveAttachments = &colorAttachmentResolveRef;
 
 
-        vk::SubpassDependency dependency{};
+        VkSubpassDependency dependency{};
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = {};
-        dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+        dependency.srcStageMask = VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VkPipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = {};
-        dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-        dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+        dependency.dstStageMask = VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT| VkPipelineStageFlagBits::VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VkAccessFlagBits::VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         
-        std::array<vk::AttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
-        vk::RenderPassCreateInfo renderPassInfo{};
-        renderPassInfo.sType = vk::StructureType::eRenderPassCreateInfo;
+        std::array<VkAttachmentDescription, 3> attachments = { colorAttachment, depthAttachment, colorAttachmentResolve };
+        VkRenderPassCreateInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
         renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
         renderPassInfo.pAttachments = attachments.data();
         renderPassInfo.subpassCount = 1;
@@ -818,28 +820,29 @@ namespace Mule
         renderPassInfo.dependencyCount = 1;
         renderPassInfo.pDependencies = &dependency;
 
-        sVulkanData.RenderPass = sVulkanData.LogicalDevice.createRenderPass(renderPassInfo);
+        vkCreateRenderPass(sVulkanData.LogicalDevice, &renderPassInfo, nullptr, &sVulkanData.RenderPass);
     }
     
-    vk::Format RenderAPI::FindDepthFormat()
+    VkFormat RenderAPI::FindDepthFormat()
     {
         return FindSupportedFormat(
-            { vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint },
-            vk::ImageTiling::eOptimal,
-            vk::FormatFeatureFlagBits::eDepthStencilAttachment
+            { VkFormat::VK_FORMAT_D32_SFLOAT, VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT, VkFormat::VK_FORMAT_D24_UNORM_S8_UINT},
+            VkImageTiling::VK_IMAGE_TILING_OPTIMAL,
+            VkFormatFeatureFlagBits::VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
         );
     }
     
-    vk::Format RenderAPI::FindSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features)
+    VkFormat RenderAPI::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
     {
-        for (vk::Format format : candidates) {
-            vk::FormatProperties props = sVulkanData.PhysicalDevice.getFormatProperties(format);
-            
-            if (tiling == vk::ImageTiling::eLinear && (props.linearTilingFeatures & features) == features) 
+        for (VkFormat format : candidates) {
+            VkFormatProperties props;
+            vkGetPhysicalDeviceFormatProperties(sVulkanData.PhysicalDevice, format, &props);
+
+            if (tiling == VkImageTiling::VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) 
             {
                 return format;
             }
-            else if (tiling == vk::ImageTiling::eOptimal && (props.optimalTilingFeatures & features) == features) 
+            else if (tiling == VkImageTiling::VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) 
             {
                 return format;
             }
@@ -849,28 +852,27 @@ namespace Mule
     
     void RenderAPI::CreateDescriptorSetLayout()
     {
-        vk::DescriptorSetLayoutBinding uboLayoutBinding{};
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
         uboLayoutBinding.binding = 0;
         uboLayoutBinding.descriptorCount = 1;
         //uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         uboLayoutBinding.pImmutableSamplers = nullptr;
         //uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-        vk::DescriptorSetLayoutBinding samplerLayoutBinding{};
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
         samplerLayoutBinding.binding = 1;
         samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        samplerLayoutBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+        samplerLayoutBinding.stageFlags = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
         
-
-        std::array<vk::DescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-        vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.data();
 
-        sVulkanData.DesciptorLayout = sVulkanData.LogicalDevice.createDescriptorSetLayout(layoutInfo);
+        vkCreateDescriptorSetLayout(sVulkanData.LogicalDevice, &layoutInfo, nullptr, &sVulkanData.DesciptorLayout);
     }
 
     void RenderAPI::CreateFrameBuffers()
@@ -878,14 +880,14 @@ namespace Mule
         sVulkanData.SwapChainFramebuffers.resize(sVulkanData.SwapChainImageViews.size());
 
         for (size_t i = 0; i < sVulkanData.SwapChainFramebuffers.size(); i++) {
-            std::array<vk::ImageView, 3> attachments = {
+            std::array<VkImageView, 3> attachments = {
                 sVulkanData.ColorImageView,
                 sVulkanData.DepthImageView,
                 sVulkanData.SwapChainImageViews[i]
             };
 
-            vk::FramebufferCreateInfo framebufferInfo{};
-            framebufferInfo.sType = vk::StructureType::eFramebufferCreateInfo;
+            VkFramebufferCreateInfo framebufferInfo{};
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebufferInfo.renderPass = sVulkanData.RenderPass;
             framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
             framebufferInfo.pAttachments = &attachments[0];
@@ -893,36 +895,36 @@ namespace Mule
             framebufferInfo.height = sVulkanData.SwapChainExtent.height;
             framebufferInfo.layers = 1;
 
-            sVulkanData.SwapChainFramebuffers[i] = sVulkanData.LogicalDevice.createFramebuffer(framebufferInfo);
+            vkCreateFramebuffer(sVulkanData.LogicalDevice, &framebufferInfo, nullptr, &sVulkanData.SwapChainFramebuffers[i]);
         }
     }
 
     void RenderAPI::CreateColorResource()
     {
-        vk::Format colorFormat = sVulkanData.SwapChainFormat;
-        vk::MemoryPropertyFlagBits::eDeviceLocal;
+        VkFormat colorFormat = sVulkanData.SwapChainFormat;
+        VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         CreateImage(
             sVulkanData.SwapChainExtent.width, 
             sVulkanData.SwapChainExtent.height,
             1, 
             sVulkanData.MSAASamples, 
             colorFormat, 
-            vk::ImageTiling::eOptimal,
-            vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal,
+            VkImageTiling::VK_IMAGE_TILING_OPTIMAL,
+            VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             sVulkanData.ColorImage, 
             sVulkanData.ColorImageMemory);
 
         sVulkanData.ColorImageView = CreateImageView(
             sVulkanData.ColorImage, 
             colorFormat, 
-            vk::ImageAspectFlagBits::eColor, 
+            VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 
             1);
     }
 
     void RenderAPI::CreateDepthResource()
     {
-        vk::Format depthFormat = FindDepthFormat();
+        VkFormat depthFormat = FindDepthFormat();
 
         CreateImage(
             sVulkanData.SwapChainExtent.width,
@@ -930,40 +932,45 @@ namespace Mule
             1,
             sVulkanData.MSAASamples,
             depthFormat,
-            vk::ImageTiling::eOptimal,
-            vk::ImageUsageFlagBits::eDepthStencilAttachment,
-            vk::MemoryPropertyFlagBits::eDeviceLocal,
+            VkImageTiling::VK_IMAGE_TILING_OPTIMAL,
+            VkImageUsageFlagBits::VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+            VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             sVulkanData.DepthImage,
             sVulkanData.DepthImageMemory);
 
         sVulkanData.DepthImageView = CreateImageView(
             sVulkanData.DepthImage,
             depthFormat,
-            vk::ImageAspectFlagBits::eDepth,
+            VkImageAspectFlagBits::VK_IMAGE_ASPECT_DEPTH_BIT,
             1);
     }
 
     void RenderAPI::CreateCommandBuffer()
     {
+        sVulkanData.CommandBuffers.reserve(BUFFER_COUNT);
+
         VkCommandBufferAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = sVulkanData.CommandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandBufferCount = BUFFER_COUNT;
 
-        sVulkanData.CommandBuffers = sVulkanData.LogicalDevice.allocateCommandBuffers(allocInfo);
+        if (vkAllocateCommandBuffers(sVulkanData.LogicalDevice, &allocInfo, &sVulkanData.CommandBuffers[0]) != VK_SUCCESS)
+        {
+            LOG_ERR(L"Failed to allocate commandbuffers");
+        }
     }
 
     void RenderAPI::CreateCommandPool()
     {
         VulkanQueueFamilyIndices queueFamilyIndices = FindQueueFamilies();
         
-        vk::CommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = vk::StructureType::eCommandPoolCreateInfo;
-        poolInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;;
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         poolInfo.queueFamilyIndex = queueFamilyIndices.GraphicsIndex;
 
-        sVulkanData.CommandPool = sVulkanData.LogicalDevice.createCommandPool(poolInfo);
+        vkCreateCommandPool(sVulkanData.LogicalDevice, &poolInfo, nullptr, &sVulkanData.CommandPool);
     }
 
     void RenderAPI::CreateSyncObjects()
@@ -972,53 +979,55 @@ namespace Mule
         sVulkanData.RenderFinishedSemaphores.resize(BUFFER_COUNT);
         sVulkanData.InFlightFences.resize(BUFFER_COUNT);
 
-        vk::SemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = vk::StructureType::eSemaphoreCreateInfo;
+        VkSemaphoreCreateInfo semaphoreInfo{};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-        vk::FenceCreateInfo fenceInfo{};
-        fenceInfo.sType = vk::StructureType::eFenceCreateInfo;
-        fenceInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+        VkFenceCreateInfo fenceInfo{};
+        fenceInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+        fenceInfo.flags = VkFenceCreateFlagBits::VK_FENCE_CREATE_SIGNALED_BIT;
 
         for (size_t i = 0; i < BUFFER_COUNT; i++) 
         {
-            sVulkanData.ImageAvailableSemaphores[i] = sVulkanData.LogicalDevice.createSemaphore(semaphoreInfo);
-            sVulkanData.RenderFinishedSemaphores[i] = sVulkanData.LogicalDevice.createSemaphore(semaphoreInfo);
-            sVulkanData.InFlightFences[i] = sVulkanData.LogicalDevice.createFence(fenceInfo);
+            vkCreateSemaphore(sVulkanData.LogicalDevice, &semaphoreInfo, nullptr, &sVulkanData.ImageAvailableSemaphores[i]);
+            vkCreateSemaphore(sVulkanData.LogicalDevice, &semaphoreInfo, nullptr, &sVulkanData.RenderFinishedSemaphores[i]);
+            vkCreateFence(sVulkanData.LogicalDevice, &fenceInfo, nullptr, &sVulkanData.InFlightFences[i]);
         }
     }
 
     VkCommandBuffer RenderAPI::BeginSingleTimeCommands()
     {
-        vk::CommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = vk::StructureType::eCommandBufferAllocateInfo;
-        allocInfo.level = vk::CommandBufferLevel::ePrimary;
+        VkCommandBufferAllocateInfo allocInfo{};
+        allocInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         allocInfo.commandPool = sVulkanData.CommandPool;
         allocInfo.commandBufferCount = 1;
 
-        auto commandBuffer = sVulkanData.LogicalDevice.allocateCommandBuffers(allocInfo);
+        VkCommandBuffer cmd;
+        vkAllocateCommandBuffers(sVulkanData.LogicalDevice, &allocInfo, &cmd);
 
-        vk::CommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = vk::StructureType::eCommandBufferBeginInfo;
-        beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
         
-        commandBuffer[0].begin(beginInfo);
+        vkBeginCommandBuffer(cmd, &beginInfo);
 
-        return commandBuffer[0];
+        return cmd;
     }
 
-    void RenderAPI::EndSingleTimeCommands(vk::CommandBuffer commandBuffer)
+    void RenderAPI::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
     {
         vkEndCommandBuffer(commandBuffer);
 
-        vk::SubmitInfo submitInfo{};
-        submitInfo.sType = vk::StructureType::eSubmitInfo;
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        sVulkanData.GraphicsQueue.submit(submitInfo);
-        sVulkanData.GraphicsQueue.waitIdle();
+        vkQueueSubmit(sVulkanData.GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
-        sVulkanData.LogicalDevice.freeCommandBuffers(sVulkanData.CommandPool, commandBuffer);
+        vkQueueWaitIdle(sVulkanData.GraphicsQueue);
+
+        vkFreeCommandBuffers(sVulkanData.LogicalDevice, sVulkanData.CommandPool, 1, &commandBuffer);
     }
 
     void RenderAPI::RecreateSwapChain()
@@ -1029,8 +1038,8 @@ namespace Mule
             glfwGetFramebufferSize(sWindow, &width, &height);
             glfwWaitEvents();
         }
-        sVulkanData.LogicalDevice.waitIdle();
-        
+
+        vkDeviceWaitIdle(sVulkanData.LogicalDevice);
 
         DestroySwapChain();
 
@@ -1042,47 +1051,47 @@ namespace Mule
 
     void RenderAPI::DestroySwapChain()
     {
-        sVulkanData.LogicalDevice.destroyImageView(sVulkanData.DepthImageView);
-        sVulkanData.LogicalDevice.destroyImage(sVulkanData.DepthImage);
-        sVulkanData.LogicalDevice.freeMemory(sVulkanData.DepthImageMemory);
+        vkDestroyImageView(sVulkanData.LogicalDevice, sVulkanData.DepthImageView, nullptr);
+        vkDestroyImage(sVulkanData.LogicalDevice, sVulkanData.DepthImage, nullptr);
+        vkFreeMemory(sVulkanData.LogicalDevice, sVulkanData.DepthImageMemory, nullptr);
 
-        sVulkanData.LogicalDevice.destroyImageView(sVulkanData.ColorImageView);
-        sVulkanData.LogicalDevice.destroyImage(sVulkanData.ColorImage);
-        sVulkanData.LogicalDevice.freeMemory(sVulkanData.ColorImageMemory);
-
+        vkDestroyImageView(sVulkanData.LogicalDevice, sVulkanData.ColorImageView, nullptr);
+        vkDestroyImage(sVulkanData.LogicalDevice, sVulkanData.ColorImage, nullptr);
+        vkFreeMemory(sVulkanData.LogicalDevice, sVulkanData.ColorImageMemory, nullptr);
 
         for (auto& framebuffer : sVulkanData.SwapChainFramebuffers) 
         {
-            sVulkanData.LogicalDevice.destroyFramebuffer(framebuffer);
+            vkDestroyFramebuffer(sVulkanData.LogicalDevice, framebuffer, nullptr);
         }
 
         for (auto& imageView : sVulkanData.SwapChainImageViews) 
         {
-            sVulkanData.LogicalDevice.destroyImageView(imageView);
+            vkDestroyImageView(sVulkanData.LogicalDevice, imageView, nullptr);
         }
 
-        sVulkanData.LogicalDevice.destroySwapchainKHR(sVulkanData.SwapChain);
+        vkDestroySwapchainKHR(sVulkanData.LogicalDevice, sVulkanData.SwapChain, nullptr);
     }
 
     void RenderAPI::CreateDescriptorPool()
     {
-        vk::DescriptorPoolSize poolSize{};
-        poolSize.type = vk::DescriptorType::eUniformBuffer;
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSize.descriptorCount = static_cast<uint32_t>(BUFFER_COUNT);
         
 
-        vk::DescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = vk::StructureType::eDescriptorPoolCreateInfo;
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = 1;
         poolInfo.pPoolSizes = &poolSize;
         poolInfo.maxSets = static_cast<uint32_t>(BUFFER_COUNT);
 
-        sVulkanData.DescriptorPool = sVulkanData.LogicalDevice.createDescriptorPool(poolInfo);
+        vkCreateDescriptorPool(sVulkanData.LogicalDevice, &poolInfo, nullptr, &sVulkanData.DescriptorPool);
     }
 
-    uint32_t RenderAPI::FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+    uint32_t RenderAPI::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
     {
-        vk::PhysicalDeviceMemoryProperties memProperties = sVulkanData.PhysicalDevice.getMemoryProperties();
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(sVulkanData.PhysicalDevice, &memProperties);
 
         for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
             if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -1093,21 +1102,22 @@ namespace Mule
         return 0;
     }
     
-    vk::CommandBuffer RenderAPI::GetActiveCommandBuffer()
+    VkCommandBuffer RenderAPI::GetActiveCommandBuffer()
     {
         return sVulkanData.ActiveCommandBuffer;
     }
     
-    vk::Extent2D RenderAPI::GetSwapChainExtent()
+    VkExtent2D RenderAPI::GetSwapChainExtent()
     {
         return sVulkanData.SwapChainExtent;
     }
 
-    vk::SampleCountFlagBits RenderAPI::GetSamples()
+    VkSampleCountFlagBits RenderAPI::GetSamples()
     {
         return sVulkanData.MSAASamples;
     }
-    vk::DescriptorPool RenderAPI::GetDescriptorPool()
+
+    VkDescriptorPool RenderAPI::GetDescriptorPool()
     {
         return sVulkanData.DescriptorPool;
     }

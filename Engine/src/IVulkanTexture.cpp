@@ -23,9 +23,9 @@ namespace Mule
 	
 	IVulkanTexture::~IVulkanTexture()
 	{
-		vk::Device device = RenderAPI::GetDevice();
-		device.destroyImage(mTextureImage);
-		device.freeMemory(mTextureImageMemory);
+		VkDevice device = RenderAPI::GetDevice();
+		vkDestroyImage(device, mTextureImage, nullptr);
+		vkFreeMemory(device, mTextureImageMemory, nullptr);
 	}
 
 	void IVulkanTexture::SetData(void* data, int length)
@@ -39,37 +39,37 @@ namespace Mule
 
 	void IVulkanTexture::CreateTexture(void* pixels)
 	{
-		vk::Buffer stagingBuffer{};
-		vk::DeviceMemory stagingBufferMemory{};
+		VkBuffer stagingBuffer{};
+		VkDeviceMemory stagingBufferMemory{};
 		
 		VkDeviceSize imageSize = static_cast<uint64_t>(mWidth) * static_cast<uint64_t>(mHeight) * static_cast<uint64_t>(mDepth) * GetBytesPerPixel();
 		RenderAPI::CreateBuffer(
 			imageSize,
-			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+			VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+			VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			stagingBuffer, 
 			stagingBufferMemory);
-		vk::Device device = RenderAPI::GetDevice();
+		VkDevice device = RenderAPI::GetDevice();
 
-		void* data = new unsigned char[imageSize];
-		device.mapMemory(stagingBufferMemory, vk::DeviceSize(0), imageSize, vk::MemoryMapFlags(0));
+		void* data = NULL;  
+		vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
 		memcpy(data, pixels, static_cast<size_t>(imageSize));
-		device.unmapMemory(stagingBufferMemory);
+		vkUnmapMemory(device, stagingBufferMemory);
 				
 
-		vk::ImageType imageType{};
+		VkImageType imageType{};
 		switch (mTextureType)
 		{
-		case TextureType::TEXTURE_1D: imageType = vk::ImageType::e1D; break;
-		case TextureType::TEXTURE_2D: imageType = vk::ImageType::e2D; break;
-		case TextureType::TEXTURE_3D: imageType = vk::ImageType::e3D; break;
+		case TextureType::TEXTURE_1D: imageType = VkImageType::VK_IMAGE_TYPE_1D; break;
+		case TextureType::TEXTURE_2D: imageType = VkImageType::VK_IMAGE_TYPE_2D; break;
+		case TextureType::TEXTURE_3D: imageType = VkImageType::VK_IMAGE_TYPE_3D; break;
 		default:
 			LOG_ERR(L"Invalid texture type");
 			break;
 		}
 
-		vk::ImageCreateInfo imageInfo{};
-		imageInfo.sType = vk::StructureType::eImageCreateInfo;
+		VkImageCreateInfo imageInfo{};
+		imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageInfo.imageType = imageType;
 		imageInfo.extent.width = static_cast<uint32_t>(mWidth);
 		imageInfo.extent.height = static_cast<uint32_t>(mHeight);
@@ -77,28 +77,28 @@ namespace Mule
 		imageInfo.mipLevels = static_cast<uint32_t>(mMipLevels);
 		imageInfo.arrayLayers = static_cast<uint32_t>(mArrayLayers);
 
-		vk::Format format{};
+		VkFormat format{};
 		switch (mFormat)
 		{
-		case TextureFormat::FORMAT_R8: format = vk::Format::eR8Srgb; break;
-		case TextureFormat::FORMAT_RG8: format = vk::Format::eR8G8Srgb; break;
-		case TextureFormat::FORMAT_RGB8: format = vk::Format::eR8G8B8Srgb; break;
-		case TextureFormat::FORMAT_RGBA8: format = vk::Format::eR8G8B8A8Srgb; break;
+		case TextureFormat::FORMAT_R8: format = VkFormat::VK_FORMAT_R8_SRGB; break;
+		case TextureFormat::FORMAT_RG8: format = VkFormat::VK_FORMAT_R8G8_SRGB; break;
+		case TextureFormat::FORMAT_RGB8: format = VkFormat::VK_FORMAT_R8G8B8_SRGB; break;
+		case TextureFormat::FORMAT_RGBA8: format = VkFormat::VK_FORMAT_R8G8B8A8_SRGB; break;
 
-		case TextureFormat::FORMAT_R32I: format = vk::Format::eR32Sint; break;
-		case TextureFormat::FORMAT_RG32I: format = vk::Format::eR32G32Sint; break;
-		case TextureFormat::FORMAT_RGB32I: format = vk::Format::eR32G32B32Sint; break;
-		case TextureFormat::FORMAT_RGBA32I: format = vk::Format::eR32G32B32A32Sint; break;
+		case TextureFormat::FORMAT_R32I: format = VkFormat::VK_FORMAT_R32_SINT; break;
+		case TextureFormat::FORMAT_RG32I: format = VkFormat::VK_FORMAT_R32G32_SINT; break;
+		case TextureFormat::FORMAT_RGB32I: format = VkFormat::VK_FORMAT_R32G32B32_SINT; break;
+		case TextureFormat::FORMAT_RGBA32I: format = VkFormat::VK_FORMAT_R32G32B32_SINT; break;
 
-		case TextureFormat::FORMAT_R16F: format = vk::Format::eR16Sfloat; break;
-		case TextureFormat::FORMAT_RG16F: format = vk::Format::eR16G16Sfloat; break;
-		case TextureFormat::FORMAT_RGB16F: format = vk::Format::eR16G16B16Sfloat; break;
-		case TextureFormat::FORMAT_RGBA16F: format = vk::Format::eR16G16B16A16Sfloat; break;
+		case TextureFormat::FORMAT_R16F: format = VkFormat::VK_FORMAT_R16_SFLOAT; break;
+		case TextureFormat::FORMAT_RG16F: format = VkFormat::VK_FORMAT_R16G16_SFLOAT; break;
+		case TextureFormat::FORMAT_RGB16F: format = VkFormat::VK_FORMAT_R16G16B16_SFLOAT; break;
+		case TextureFormat::FORMAT_RGBA16F: format = VkFormat::VK_FORMAT_R16G16B16A16_SFLOAT; break;
 
-		case TextureFormat::FORMAT_R32F: format = vk::Format::eR32Sfloat; break;
-		case TextureFormat::FORMAT_RG32F: format = vk::Format::eR32G32Sfloat; break;
-		case TextureFormat::FORMAT_RGB32F: format = vk::Format::eR32G32B32Sfloat; break;
-		case TextureFormat::FORMAT_RGBA32F: format = vk::Format::eR32G32B32A32Sfloat; break;
+		case TextureFormat::FORMAT_R32F: format = VkFormat::VK_FORMAT_R32_SFLOAT; break;
+		case TextureFormat::FORMAT_RG32F: format = VkFormat::VK_FORMAT_R32G32_SFLOAT; break;
+		case TextureFormat::FORMAT_RGB32F: format = VkFormat::VK_FORMAT_R32G32B32_SFLOAT; break;
+		case TextureFormat::FORMAT_RGBA32F: format = VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT; break;
 
 		default:
 			LOG_ERR(L"Invalid texture format");
@@ -106,30 +106,30 @@ namespace Mule
 		}
 
 		imageInfo.format = format;
-		imageInfo.tiling = vk::ImageTiling::eOptimal;
-		imageInfo.initialLayout = vk::ImageLayout::eUndefined;
-		imageInfo.usage = vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled;
-		imageInfo.sharingMode = vk::SharingMode::eExclusive;
-		imageInfo.samples = vk::SampleCountFlagBits::e1;
-		imageInfo.flags = vk::ImageCreateFlags(0); // Optional
+		imageInfo.tiling = VkImageTiling::VK_IMAGE_TILING_OPTIMAL;
+		imageInfo.initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED;
+		imageInfo.usage = VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_DST_BIT | VkImageUsageFlagBits::VK_IMAGE_USAGE_SAMPLED_BIT;
+		imageInfo.sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE;
+		imageInfo.samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT;
+		imageInfo.flags = VkImageCreateFlags(0); // Optional
 
-		mTextureImage = device.createImage(imageInfo);
+		vkCreateImage(device, &imageInfo, nullptr, &mTextureImage);
 
 		VkMemoryRequirements memRequirements;
 		vkGetImageMemoryRequirements(device, mTextureImage, &memRequirements);
 
 
-		vk::MemoryAllocateInfo allocInfo{};
-		allocInfo.sType = vk::StructureType::eMemoryAllocateInfo;
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = RenderAPI::FindMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
+		allocInfo.memoryTypeIndex = RenderAPI::FindMemoryType(memRequirements.memoryTypeBits, VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		mTextureImageMemory =  device.allocateMemory(allocInfo);
+		vkAllocateMemory(device, &allocInfo, nullptr, &mTextureImageMemory);
 
-		device.bindImageMemory(mTextureImage, mTextureImageMemory, vk::DeviceSize(0));
+		vkBindImageMemory(device, mTextureImage, mTextureImageMemory, 0);
 
-		device.destroyBuffer(stagingBuffer);
-		device.freeMemory(stagingBufferMemory);
+		vkDestroyBuffer(device, stagingBuffer, nullptr);
+		vkFreeMemory(device, stagingBufferMemory, nullptr);
 	}
 
 	uint64_t IVulkanTexture::GetBytesPerPixel() const

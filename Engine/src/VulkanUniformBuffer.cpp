@@ -7,17 +7,17 @@ namespace Mule
 {
 	VulkanUniformBuffer::~VulkanUniformBuffer()
 	{
-		vk::Device device = RenderAPI::GetDevice();
+		VkDevice device = RenderAPI::GetDevice();
 
 		for (auto& buffer : mUniformBuffer)
 		{
-			device.destroyBuffer(buffer);
+			vkDestroyBuffer(device, buffer, nullptr);
 		}
 
 		for (auto& deviceMemory : mUniformBufferMemory)
 		{
-			device.unmapMemory(deviceMemory);
-			device.freeMemory(deviceMemory);
+			vkUnmapMemory(device, deviceMemory);
+			vkFreeMemory(device, deviceMemory, nullptr);
 		}
 	}
 
@@ -26,7 +26,7 @@ namespace Mule
 		Ref<VulkanUniformBuffer> uniformBuffer = MakeRef<VulkanUniformBuffer>();
 
 		const int BUFFER_COUNT = RenderAPI::GetSwapChainBufferCount();
-		const vk::Device device = RenderAPI::GetDevice();
+		const VkDevice device = RenderAPI::GetDevice();
 
 		VkDeviceSize bufferSize = desc.BufferSize;
 
@@ -38,39 +38,41 @@ namespace Mule
 		for (size_t i = 0; i < BUFFER_COUNT; i++) {
 			RenderAPI::CreateBuffer( 
 				bufferSize, 
-				vk::BufferUsageFlagBits::eUniformBuffer, 
-				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
+				VkBufferUsageFlagBits::VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
+				VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				uniformBuffer->mUniformBuffer[i],
 				uniformBuffer->mUniformBufferMemory[i]);
 
 			vkMapMemory(device, uniformBuffer->mUniformBufferMemory[i], 0, bufferSize, 0, &uniformBuffer->mUniformBufferPtr[i]);
 		}
 
-		vk::DescriptorSetLayoutBinding uboLayoutBinding{};
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
 		uboLayoutBinding.binding = desc.Binding;
-		uboLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+		uboLayoutBinding.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		uboLayoutBinding.descriptorCount = 1;
 		uboLayoutBinding.stageFlags = GetShaderStage(desc.Stage);
 
-		vk::DescriptorSetLayoutCreateInfo layoutInfo{};
-		layoutInfo.sType = vk::StructureType::eDescriptorSetLayoutCreateInfo;
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layoutInfo.bindingCount = 1;
 		layoutInfo.pBindings = &uboLayoutBinding;
 
-		vk::DescriptorSetLayout descriptorSetLayout = device.createDescriptorSetLayout(layoutInfo);
+		VkDescriptorSetLayout descriptorSetLayout;
+		vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout);
 
-		uniformBuffer->mDescriptorSetLayouts = std::vector<vk::DescriptorSetLayout>(BUFFER_COUNT, descriptorSetLayout);
+		uniformBuffer->mDescriptorSetLayouts = std::vector<VkDescriptorSetLayout>(BUFFER_COUNT, descriptorSetLayout);
 		
-		vk::DescriptorSetAllocateInfo allocInfo{};
-		allocInfo.sType = vk::StructureType::eDescriptorSetAllocateInfo;
+		VkDescriptorSetAllocateInfo allocInfo{};
+		allocInfo.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = RenderAPI::GetDescriptorPool();
 		allocInfo.descriptorSetCount = static_cast<uint32_t>(BUFFER_COUNT);
 		allocInfo.pSetLayouts = &uniformBuffer->mDescriptorSetLayouts[0];
 
-		uniformBuffer->mDescriptorSets = device.allocateDescriptorSets(allocInfo);
+		uniformBuffer->mDescriptorSets.resize(BUFFER_COUNT);
+		vkAllocateDescriptorSets(device, &allocInfo, &uniformBuffer->mDescriptorSets[0]);
 
 		for (size_t i = 0; i < BUFFER_COUNT; i++) {
-			vk::DescriptorBufferInfo bufferInfo{};
+			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffer->mUniformBuffer[i];
 			bufferInfo.offset = 0;
 			bufferInfo.range = desc.BufferSize;
@@ -81,13 +83,13 @@ namespace Mule
 			// imageInfo.imageView = textureImageView;
 			// imageInfo.sampler = textureSampler;
 
-			vk::WriteDescriptorSet descriptorWrites{};
+			VkWriteDescriptorSet descriptorWrites{};
 
-			descriptorWrites.sType = vk::StructureType::eWriteDescriptorSet;
+			descriptorWrites.sType = VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			descriptorWrites.dstSet = uniformBuffer->mDescriptorSets[i];
 			descriptorWrites.dstBinding = 0;
 			descriptorWrites.dstArrayElement = 0;
-			descriptorWrites.descriptorType = vk::DescriptorType::eUniformBuffer;
+			descriptorWrites.descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			descriptorWrites.descriptorCount = 1;
 			descriptorWrites.pBufferInfo = &bufferInfo;
 
@@ -99,7 +101,7 @@ namespace Mule
 			// descriptorWrites[1].descriptorCount = 1;
 			// descriptorWrites[1].pImageInfo = &imageInfo;
 
-			device.updateDescriptorSets(descriptorWrites, {});
+			vkUpdateDescriptorSets(device, 1, &descriptorWrites, 0, NULL);
 		}
 
 		return uniformBuffer;
@@ -109,8 +111,7 @@ namespace Mule
 	{
 		auto cmd = RenderAPI::GetActiveCommandBuffer();
 		int currentFrame = RenderAPI::GetCurrentSwapChainFrame();
-		cmd.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, shader->GetPipelineLayout(), 0, mDescriptorSets[currentFrame], {});
-		
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, shader->GetPipelineLayout(), 0, 1, &mDescriptorSets[currentFrame], 0, NULL);
 	}
 	
 	void VulkanUniformBuffer::GetBufferData(void* data)
@@ -124,21 +125,21 @@ namespace Mule
 	}
 
 
-	vk::DescriptorSetLayout VulkanUniformBuffer::GetDescriptorSetLayout()
+	VkDescriptorSetLayout VulkanUniformBuffer::GetDescriptorSetLayout()
 	{
 		return mDescriptorSetLayouts[RenderAPI::GetCurrentSwapChainFrame()];
 	}
 	
-	vk::ShaderStageFlagBits VulkanUniformBuffer::GetShaderStage(ShaderStage stage)
+	VkShaderStageFlagBits VulkanUniformBuffer::GetShaderStage(ShaderStage stage)
 	{
 		switch (stage)
 		{
-		case ShaderStage::VERTEX: return vk::ShaderStageFlagBits::eVertex; break;
-		case ShaderStage::FRAGMENT: return vk::ShaderStageFlagBits::eFragment; break;
-		case ShaderStage::GEOMETRY: return vk::ShaderStageFlagBits::eGeometry; break;
-		case ShaderStage::TESSELATION_CONTROL: return vk::ShaderStageFlagBits::eTessellationControl; break;
-		case ShaderStage::TESSELATION_EVALUATION: return vk::ShaderStageFlagBits::eTessellationEvaluation; break;
+		case ShaderStage::VERTEX: return VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT; break;
+		case ShaderStage::FRAGMENT: return VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT; break;
+		case ShaderStage::GEOMETRY: return VkShaderStageFlagBits::VK_SHADER_STAGE_GEOMETRY_BIT; break;
+		case ShaderStage::TESSELATION_CONTROL: return VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT; break;
+		case ShaderStage::TESSELATION_EVALUATION: return VkShaderStageFlagBits::VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; break;
 		}
-		return vk::ShaderStageFlagBits();
+		return VkShaderStageFlagBits();
 	}
 }

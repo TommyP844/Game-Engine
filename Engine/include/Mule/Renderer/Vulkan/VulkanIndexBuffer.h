@@ -19,7 +19,7 @@ namespace Mule
 
 	private:
 		int mNumIndices;
-		vk::Buffer mBuffer;
-		vk::DeviceMemory mBufferMemory;
+		VkBuffer mBuffer;
+		VkDeviceMemory mBufferMemory;
 	};
 }

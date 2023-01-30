@@ -30,7 +30,7 @@ namespace Mule
 		virtual void GetBufferData(void* data) {}
 
 		// Vulkan
-		virtual vk::DescriptorSetLayout GetDescriptorSetLayout() { return vk::DescriptorSetLayout(); }
+		virtual VkDescriptorSetLayout GetDescriptorSetLayout() { return VkDescriptorSetLayout(); }
 
 
 	};

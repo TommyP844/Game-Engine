@@ -51,6 +51,6 @@ namespace Mule
 		virtual void Bind(){}
 		virtual void UnBind(){}
 		virtual void BindPushConstant(ShaderStage stage, void* data){}
-		virtual vk::PipelineLayout GetPipelineLayout() { return vk::PipelineLayout(); }
+		virtual VkPipelineLayout GetPipelineLayout() { return VkPipelineLayout(); }
 	};
 }

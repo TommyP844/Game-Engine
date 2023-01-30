@@ -15,7 +15,7 @@ namespace Mule
 		static Ref<VulkanVertexBuffer> Create(void* vertices, int length, int vertexSize);
 		virtual void Bind() override;
 	private:
-		vk::Buffer mBuffer;
-		vk::DeviceMemory mDeviceMemory;
+		VkBuffer mBuffer;
+		VkDeviceMemory mDeviceMemory;
 	};
 }

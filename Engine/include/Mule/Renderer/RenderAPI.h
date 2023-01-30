@@ -14,45 +14,45 @@ namespace Mule
 {
 	struct VulkanData
 	{
-		vk::Instance Instance;
-		vk::PhysicalDevice PhysicalDevice;
-		vk::Device LogicalDevice;
-		vk::SurfaceKHR Surface;
-		vk::Queue GraphicsQueue;
-		vk::Queue PresentQueue;
-		vk::SwapchainKHR SwapChain;
-		std::vector<vk::Image> SwapChainImages;
-		vk::Format SwapChainFormat;
-		vk::Extent2D SwapChainExtent;
-		std::vector<vk::ImageView> SwapChainImageViews;
-		vk::RenderPass RenderPass;
-		vk::SampleCountFlagBits MSAASamples = vk::SampleCountFlagBits::e4;
-		vk::DescriptorSetLayout DesciptorLayout;
-		std::vector<vk::Framebuffer> SwapChainFramebuffers;
-		vk::Image ColorImage;
-		vk::ImageView ColorImageView;
-		vk::DeviceMemory ColorImageMemory;
+		VkInstance Instance;
+		VkPhysicalDevice PhysicalDevice;
+		VkDevice LogicalDevice;
+		VkSurfaceKHR Surface;
+		VkQueue GraphicsQueue;
+		VkQueue PresentQueue;
+		VkSwapchainKHR SwapChain;
+		std::vector<VkImage> SwapChainImages;
+		VkFormat SwapChainFormat;
+		VkExtent2D SwapChainExtent;
+		std::vector<VkImageView> SwapChainImageViews;
+		VkRenderPass RenderPass;
+		VkSampleCountFlagBits MSAASamples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_4_BIT;
+		VkDescriptorSetLayout DesciptorLayout;
+		std::vector<VkFramebuffer> SwapChainFramebuffers;
+		VkImage ColorImage;
+		VkImageView ColorImageView;
+		VkDeviceMemory ColorImageMemory;
 
-		vk::Image DepthImage;
-		vk::ImageView DepthImageView;
-		vk::DeviceMemory DepthImageMemory;
+		VkImage DepthImage;
+		VkImageView DepthImageView;
+		VkDeviceMemory DepthImageMemory;
 
-		std::vector<vk::CommandBuffer> CommandBuffers;
+		std::vector<VkCommandBuffer> CommandBuffers;
 
-		vk::CommandPool CommandPool;
+		VkCommandPool CommandPool;
 
-		vk::DescriptorPool DescriptorPool;
-		vk::DescriptorPool ImguiPool;
+		VkDescriptorPool DescriptorPool;
+		VkDescriptorPool ImguiPool;
 
 		uint32_t CurrentFrame = 0;
 
-		std::vector<vk::Semaphore> ImageAvailableSemaphores;
-		std::vector<vk::Semaphore> RenderFinishedSemaphores;
-		std::vector<vk::Fence> InFlightFences;
+		std::vector<VkSemaphore> ImageAvailableSemaphores;
+		std::vector<VkSemaphore> RenderFinishedSemaphores;
+		std::vector<VkFence> InFlightFences;
 
 		uint32_t ImageIndex;
 
-		vk::CommandBuffer ActiveCommandBuffer;
+		VkCommandBuffer ActiveCommandBuffer;
 	};
 
 	class RenderAPI
@@ -87,16 +87,16 @@ namespace Mule
 		static void SwapBuffers();
 
 		// For vulkan objects
-		static vk::RenderPass GetRenderPass();
-		static const vk::Device& GetDevice();
-		static const vk::PhysicalDevice& GetPhysicalDevice();
-		static void CopyBuffer(vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size);
-		static void CreateBuffer(vk::DeviceSize size, vk::BufferUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
-		static uint32_t FindMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
-		static vk::CommandBuffer GetActiveCommandBuffer();
-		static vk::Extent2D GetSwapChainExtent();
-		static vk::SampleCountFlagBits GetSamples();
-		static vk::DescriptorPool GetDescriptorPool();
+		static VkRenderPass GetRenderPass();
+		static const VkDevice& GetDevice();
+		static const VkPhysicalDevice& GetPhysicalDevice();
+		static void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+		static void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+		static uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+		static VkCommandBuffer GetActiveCommandBuffer();
+		static VkExtent2D GetSwapChainExtent();
+		static VkSampleCountFlagBits GetSamples();
+		static VkDescriptorPool GetDescriptorPool();
 		
 
 	private:
@@ -109,16 +109,23 @@ namespace Mule
 
 		struct VulkanQueueFamilyIndices
 		{
+			VulkanQueueFamilyIndices() : GraphicsIndex(UINT32_MAX), PresentIndex(UINT32_MAX) {}
+
 			uint32_t GraphicsIndex;
 			uint32_t PresentIndex;
 
 			bool HasPresentationQueue;
+
+			bool IsComplete()
+			{
+				return GraphicsIndex != UINT32_MAX && PresentIndex != UINT32_MAX;
+			}
 		};
 
 		struct VulkanSwapChainSupportDetails {
-			vk::SurfaceCapabilitiesKHR Capabilities;
-			std::vector<vk::SurfaceFormatKHR> Formats;
-			std::vector<vk::PresentModeKHR> PresentModes;
+			VkSurfaceCapabilitiesKHR Capabilities;
+			std::vector<VkSurfaceFormatKHR> Formats;
+			std::vector<VkPresentModeKHR> PresentModes;
 		};
 
 		static VulkanData sVulkanData;
@@ -135,14 +142,14 @@ namespace Mule
 		static VulkanQueueFamilyIndices FindQueueFamilies();
 		static void CreateSwapChain();
 		static VulkanSwapChainSupportDetails QuerySwapChainSupportDetails();
-		static vk::SurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<vk::SurfaceFormatKHR>& availableFormats);
-		static vk::PresentModeKHR ChooseSwapPresentMode(const std::vector<vk::PresentModeKHR>& availablePresentModes);
-		static vk::Extent2D ChooseSwapExtent(const vk::SurfaceCapabilitiesKHR& capabilities);
-		static void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits numSamples, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties, vk::Image& image, vk::DeviceMemory& imageMemory);
-		static vk::ImageView CreateImageView(vk::Image image, vk::Format format, vk::ImageAspectFlags aspectFlags, uint32_t mipLevels);
+		static VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+		static VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+		static VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+		static void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+		static VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
 		static void CreateRenderPass();
-		static vk::Format FindDepthFormat();
-		static vk::Format FindSupportedFormat(const std::vector<vk::Format>& candidates, vk::ImageTiling tiling, vk::FormatFeatureFlags features);
+		static VkFormat FindDepthFormat();
+		static VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 		static void CreateDescriptorSetLayout();
 		static void CreateFrameBuffers();
 		static void CreateColorResource();
@@ -151,7 +158,7 @@ namespace Mule
 		static void CreateCommandPool();
 		static void CreateSyncObjects();
 		static VkCommandBuffer BeginSingleTimeCommands();
-		static void EndSingleTimeCommands(vk::CommandBuffer commandBuffer);
+		static void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
 		static void RecreateSwapChain();
 		static void DestroySwapChain();
 		static void CreateDescriptorPool();

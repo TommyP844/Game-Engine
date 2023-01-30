@@ -23,17 +23,17 @@ namespace Mule
 		
 		virtual void SetBufferData(void* data) override;
 
-		virtual vk::DescriptorSetLayout GetDescriptorSetLayout() override;
+		virtual VkDescriptorSetLayout GetDescriptorSetLayout() override;
 
 	private:
-		std::vector<vk::Buffer> mUniformBuffer;
-		std::vector<vk::DeviceMemory> mUniformBufferMemory;
+		std::vector<VkBuffer> mUniformBuffer;
+		std::vector<VkDeviceMemory> mUniformBufferMemory;
 		std::vector<void*> mUniformBufferPtr;
-		std::vector<vk::DescriptorSetLayout> mDescriptorSetLayouts;
-		std::vector<vk::DescriptorSet> mDescriptorSets;
+		std::vector<VkDescriptorSetLayout> mDescriptorSetLayouts;
+		std::vector<VkDescriptorSet> mDescriptorSets;
 		int mBuffersize;
 
-		static vk::ShaderStageFlagBits GetShaderStage(ShaderStage stage);
+		static VkShaderStageFlagBits GetShaderStage(ShaderStage stage);
 
 	};
 }

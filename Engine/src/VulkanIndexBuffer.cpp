@@ -16,15 +16,15 @@ namespace Mule
 
 	Ref<VulkanIndexBuffer> VulkanIndexBuffer::Create(unsigned int* indices, int length)
 	{
-		vk::Device device = RenderAPI::GetDevice();
+		VkDevice device = RenderAPI::GetDevice();
 
-		vk::DeviceSize bufferSize = sizeof(unsigned int) * length;
+		VkDeviceSize bufferSize = sizeof(unsigned int) * length;
 
-		vk::Buffer stagingBuffer;
-		vk::DeviceMemory stagingBufferMemory;
+		VkBuffer stagingBuffer;
+		VkDeviceMemory stagingBufferMemory;
 		
-		RenderAPI::CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, stagingBuffer, stagingBufferMemory);
-
+		RenderAPI::CreateBuffer(bufferSize, VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+		
 		void* data;
 		vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
 		memcpy(data, indices, (size_t)bufferSize);
@@ -34,7 +34,7 @@ namespace Mule
 
 		ibuffer->mNumIndices = length;
 
-		RenderAPI::CreateBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer, vk::MemoryPropertyFlagBits::eDeviceLocal, ibuffer->mBuffer, ibuffer->mBufferMemory);
+		RenderAPI::CreateBuffer(bufferSize, VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_DST_BIT | VkBufferUsageFlagBits::VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, ibuffer->mBuffer, ibuffer->mBufferMemory);
 		
 		RenderAPI::CopyBuffer(stagingBuffer, ibuffer->mBuffer, bufferSize);
 
@@ -46,14 +46,14 @@ namespace Mule
 
 	void VulkanIndexBuffer::Bind()
 	{
-		vk::CommandBuffer commandbuffer = RenderAPI::GetActiveCommandBuffer();
-		commandbuffer.bindIndexBuffer(mBuffer, 0, vk::IndexType::eUint32);
+		VkCommandBuffer commandbuffer = RenderAPI::GetActiveCommandBuffer();
+		vkCmdBindIndexBuffer(commandbuffer, mBuffer, 0, VK_INDEX_TYPE_UINT32);
 	}
 
 	void VulkanIndexBuffer::Draw()
 	{
-		vk::CommandBuffer commandbuffer = RenderAPI::GetActiveCommandBuffer();
-		commandbuffer.drawIndexed(mNumIndices, 1, 0, 0, 0);
+		VkCommandBuffer commandbuffer = RenderAPI::GetActiveCommandBuffer();
+		vkCmdDrawIndexed(commandbuffer, mNumIndices, 1, 0, 0, 0);
 	}
 
 }
