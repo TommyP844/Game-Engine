@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <limits>
 
-
 // Streams
 
 #include <iostream>
