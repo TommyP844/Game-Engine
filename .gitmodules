@@ -21,3 +21,12 @@
 	path = SubModules/Imgui/Imgui
 	url = git@github.com:TommyP844/imgui.git
 	branch = docking
+[submodule "SubModules/bgfx"]
+	path = SubModules/bgfx
+	url = https://github.com/TommyP844/bgfx
+[submodule "SubModules/bx"]
+	path = SubModules/bx
+	url = https://github.com/bkaradzic/bx
+[submodule "SubModules/bimg"]
+	path = SubModules/bimg
+	url = https://github.com/bkaradzic/bimg
