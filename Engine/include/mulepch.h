@@ -12,6 +12,7 @@
 #include <memory>
 #include <functional>
 #include <mutex>
+#include <stdlib.h>
 
 // Functions
 
@@ -26,5 +27,4 @@
 #include <fstream>
 
 // Libs
-
-#include <vulkan/vulkan.hpp>
+#include "bgfx/bgfx.h"

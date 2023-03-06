@@ -13,5 +13,9 @@ if not exist "SubModules/Assimp/Assimp.sln" (
 	:: copy /Y "SubModules\Assimp\bin\Release\assimp-vc143-mt.dll" "Editor\bin\Release\assimp-vc143-mt.dll"
 	:: copy /Y "SubModules\Assimp\bin\Release\assimp-vc143-mt.pdb" "Editor\bin\Release\assimp-vc143-mt.pdb"
 )
+
+cd "SubModules/bgfx"
+..\bx\tools\bin\windows\genie --with-examples vs2017
+cd ../..
 premake5.exe vs2022
 pause
