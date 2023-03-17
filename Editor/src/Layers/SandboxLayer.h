@@ -7,6 +7,8 @@
 class SandBoxLayer : public ILayer
 {
 public:
+	SandBoxLayer(AppData& appData) : ILayer(appData) {}
+
 	virtual void OnAttach() override;
 	virtual void OnUpdate() override;
 	virtual void OnDetach() override;

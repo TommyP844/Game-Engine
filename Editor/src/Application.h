@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include "AppData.h"
+
 class Application
 {
 public:
@@ -18,4 +20,6 @@ public:
 private:
 	std::vector<Mule::Ref<ILayer>> mLayers;
 	Mule::Ref<Mule::Window> mWindow;
+	AppData mAppData;
+	
 };

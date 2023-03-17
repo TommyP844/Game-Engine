@@ -1,11 +1,12 @@
 #pragma once
+
 #include "IPanel.h"
 
-class ScenePanel : public IPanel
+class ComponentPanel : public IPanel
 {
 public:
-	ScenePanel();
-	~ScenePanel(){}
+	ComponentPanel(AppData& appData) : IPanel("Component Panel", appData) {}
+	~ComponentPanel();
 
 	virtual void OnAttach() override;
 	virtual void OnUpdate() override;

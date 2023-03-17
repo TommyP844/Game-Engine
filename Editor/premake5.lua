@@ -25,7 +25,8 @@ project "Mule Editor"
 
 		"../SubModules/bgfx/include",
 		"../SubModules/bx/include",
-		"../SubModules/stb"
+		"../SubModules/stb",
+		"../SubModules/Assimp/include"
 	}
 
 	links

@@ -1,11 +1,12 @@
 #pragma once
 
 #include <string>
+#include "../../AppData.h"
 
 class IPanel
 {
 public:
-	IPanel(const std::string& name) : mName(name) {}
+	IPanel(const std::string& name, AppData& appData) : mName(name), mAppData(appData) {}
 	virtual ~IPanel(){}
 
 	virtual void OnAttach() = 0;
@@ -14,6 +15,8 @@ public:
 
 	const std::string& GetName() const { return mName; }
 
+protected:
+	AppData& mAppData;
 private:
 	std::string mName;
 };
