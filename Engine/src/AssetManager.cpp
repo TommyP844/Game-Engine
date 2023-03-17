@@ -1,71 +1,94 @@
 #include "mulepch.h"
 
 #include "Mule/Assets/AssetManager.h"
-#include "Mule/Util/Log.h"
 
-namespace Mule::AssetManager
+
+namespace Mule
 {
-	struct AssetData
-	{
-		std::map<std::wstring, Ref<Asset>> Assets;
-	};
+	AssetManager* AssetManager::sInstance = nullptr;
 
-	static AssetData sAssetData;
-
-	void UnloadAllAssets()
+	AssetType AssetManager::GetTypeFromExtension(const std::string& extension)
 	{
-		LOG_WARN(L"AssetManager unloading all assets");
-		sAssetData.Assets.clear();
+		if (extension == ".png" || extension == ".bmp" || extension == ".tga" || extension == ".jpg" || extension == ".jpeg")
+			return Asset_Texture;
+		if (extension == ".scene")
+			return Asset_Scene;
+		if (extension == ".obj" || extension == ".dae" || extension == ".fbx")
+			return Asset_MeshCollection;
+		if (extension == ".shader")
+			return Asset_Shader;
+		if (extension == ".material")
+			return Asset_Material;
+
+		return Asset_Invalid;
 	}
 
-	void TrackAsset(const std::wstring& name, Ref<Asset> asset)
+	AssetManager::AssetEntry& AssetManager::GetAssetWithMetaData(const std::string& name)
 	{
-#ifdef DEBUG
-		LOG_MSG(L"AssetManager now tracking: {0}", name);
-		if (sAssetData.Assets.find(name) != sAssetData.Assets.end())
+		return mAssetDB[name];
+	}
+
+	bool AssetManager::IsAssetTracked(const std::string& name)
+	{
+		return mAssetDB.find(name) != mAssetDB.end();
+	}
+
+	void AssetManager::TrackAsset(const std::string& name, Ref<void> asset, const fs::path& path, AssetType type)
+	{
+		AssetEntry ae;
+		ae.Asset = asset;
+		ae.Name = name;
+		ae.Type = type;
+		ae.Path = path;
+		mAssetDB[name] = ae;
+	}
+
+	void AssetManager::UnloadAsset(const std::string& name)
+	{
+		mAssetDB.erase(name);
+	}
+
+	void AssetManager::ChangeAssetName(const std::string& old, const std::string& newName)
+	{
+		AssetEntry ae = mAssetDB[old];
+		mAssetDB.erase(old);
+		mAssetDB[newName] = ae;
+	}
+
+	std::vector<std::string> AssetManager::GetAssetNamesOfType(AssetType assetType)
+	{
+		std::vector<std::string> names;
+
+		for (auto& it : mAssetDB)
 		{
-			LOG_ERR(L"Asset name: {0} exists");
+			if (it.second.Type == assetType)
+			{
+				names.push_back(it.first);
+			}
+		}
+
+		return names;
+	}
+
+	void AssetManager::Init(const fs::path root)
+	{
+		if (sInstance != nullptr)
+		{
+			LOG_WARN(L"AssetManager already initialized");
 			return;
 		}
-#endif
-		sAssetData.Assets[name] = asset;
+		sInstance = new AssetManager();
+		sInstance->mRootDir = root;
 	}
 
-	void UnTrackAsset(const std::wstring& name)
+	void AssetManager::Shutdown()
 	{
-#ifdef DEBUG
-		LOG_MSG(L"AssetManager no longer tracking: {0}", name);
-		if (sAssetData.Assets.find(name) != sAssetData.Assets.end())
+		if (!sInstance)
 		{
-			LOG_ERR(L"Asset name: {0} does not exist", name);
+			LOG_WARN(L"Shutdown() called on uninitialized AssetManager");
 			return;
 		}
-#endif
-		sAssetData.Assets.erase(name);
+		delete sInstance;
 	}
-
-	Ref<Asset> GetAsset(const std::wstring& name)
-	{
-#ifdef DEBUG
-		if (sAssetData.Assets.find(name) != sAssetData.Assets.end())
-		{
-			LOG_ERR(L"Asset name: {0} does not exist", name);
-			return nullptr;
-		}
-#endif
-		return sAssetData.Assets[name];
-	}
-
-	std::vector<std::wstring> GetLoadedAssets()
-	{
-		std::vector<std::wstring> list;
-		for (auto& iter : sAssetData.Assets)
-		{
-			list.push_back(iter.first);
-		}
-		return list;
-	}
-
-
 
 }

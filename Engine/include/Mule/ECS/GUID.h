@@ -27,7 +27,12 @@ namespace Mule
 			return mGUID != rhs.mGUID;
 		}
 
-		uint64_t operator()()
+		uint64_t operator()() const 
+		{
+			return mGUID;
+		}
+
+		uint64_t AsULL() const
 		{
 			return mGUID;
 		}

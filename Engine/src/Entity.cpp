@@ -3,13 +3,14 @@
 #include "Mule/ECS/Entity.h"
 #include "Mule/ECS/Components.h"
 #include "Mule/ECS/Scene.h"
+#include "Mule/Util/Log.h"
 
 namespace Mule {
 	
 	Entity::Entity()
 		:
 		mID(entt::null),
-		mScene(Ref<Scene>())
+		mScene(nullptr)
 	{}
 
 	Entity::Entity(entt::entity id, WeakRef<Scene> scene)
@@ -19,22 +20,46 @@ namespace Mule {
 	{
 	}
 
-	Entity Entity::GetParent()
+	bool Entity::HasChildren() const
 	{
-		return Entity();
+		return GetComponent<RelationshipComponent>().Children.size() > 0;
 	}
 
-	std::vector<Entity> Entity::GetChildren()
+	bool Entity::IsChild() const
 	{
-		return std::vector<Entity>();
+		return GetComponent<RelationshipComponent>().Parent.IsValid();
+	}
+
+	Entity Entity::GetParent() const
+	{
+		return GetComponent<RelationshipComponent>().Parent;
+	}
+
+	std::vector<Entity> Entity::GetChildren() const
+	{
+		return GetComponent<RelationshipComponent>().Children;
 	}
 
 	void Entity::AddChild(Entity e)
 	{
+		mScene->SetModified(true);
+		auto& children = GetComponent<RelationshipComponent>().Children;
+		children.push_back(e);
+		e.GetComponent<RelationshipComponent>().Parent = Entity(mID, mScene);
 	}
 
 	void Entity::RemoveChild(Entity e)
 	{
+		mScene->SetModified(true);
+		e.GetComponent<RelationshipComponent>().Parent = Entity();
+		auto& children = GetComponent<RelationshipComponent>().Children;
+		auto iter = std::find(children.begin(), children.end(), e);
+		if (iter != children.end())
+		{
+			children.erase(iter);
+			return;
+		}
+		LOG_ERR(L"Entity: {0} not a child of Entity: {1}", e.GetTag(), GetTag());
 	}
 
 	entt::entity Entity::GetID() const
@@ -42,12 +67,12 @@ namespace Mule {
 		return mID;
 	}
 
-	WeakRef<Scene> Entity::GetScene() const
+	Ref<Scene> Entity::GetScene() const
 	{
 		return mScene;
 	}
 
-	const std::wstring& Entity::GetTag() const
+	const std::string& Entity::GetTag() const
 	{
 		return GetComponent<TagComponent>().Tag;
 	}
@@ -55,6 +80,11 @@ namespace Mule {
 	GUID Entity::GetGUID() const
 	{
 		return GetComponent<GUIDComponent>().GUID;
+	}
+
+	bool Entity::IsValid() const
+	{
+		return mID != entt::null && mScene;
 	}
 	
 }

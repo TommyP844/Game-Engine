@@ -38,9 +38,12 @@ namespace Mule {
 
 		// Relationships
 
-		Entity GetParent();
+		bool HasChildren() const;
+		bool IsChild() const;
 
-		std::vector<Entity> GetChildren();
+		Entity GetParent() const;
+
+		std::vector<Entity> GetChildren() const;
 
 		void AddChild(Entity e);
 		void RemoveChild(Entity e);
@@ -49,14 +52,21 @@ namespace Mule {
 
 		entt::entity GetID() const;
 
-		WeakRef<Scene> GetScene() const;
+		Ref<Scene> GetScene() const;
 
-		const std::wstring& GetTag() const;
+		const std::string& GetTag() const;
 
 		GUID GetGUID() const;
 
+		bool IsValid() const;
+
 		// Operators
 
+		bool operator==(Entity rhs) 
+		{
+			// we could also check guid here
+			return mID == rhs.mID && mScene == rhs.mScene;
+		}
 
 	private:
 

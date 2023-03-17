@@ -28,7 +28,7 @@ namespace Mule {
 	class Window
 	{
 	public:
-		Window() = default;
+		Window() : mIsOpen(true) {}
 		~Window();
 		static void Init();
 		static void Shutdown();
@@ -59,9 +59,14 @@ namespace Mule {
 
 		int GetMouseScroll() const;
 
+		void SetShouldClose() { mIsOpen = false; }
+
+		bool IsOpen() const { return mIsOpen; }
+
 	private:
 		std::queue<WindowEvent> mEvents;
 		GLFWwindow* mWindow;
+		bool mIsOpen;
 
 	};
 

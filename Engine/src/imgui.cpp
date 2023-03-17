@@ -73,7 +73,7 @@ struct OcornutImguiContext
 
 		// Render command lists
 		for (int32_t ii = 0, num = _drawData->CmdListsCount; ii < num; ++ii)
-		{
+		{ 
 			bgfx::TransientVertexBuffer tvb;
 			bgfx::TransientIndexBuffer tib;
 
@@ -196,6 +196,7 @@ struct OcornutImguiContext
 
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		bgfx::RendererType::Enum type = bgfx::getRendererType();
 		m_program = bgfx::createProgram(
@@ -235,6 +236,8 @@ struct OcornutImguiContext
 			, 0
 			, bgfx::copy(data, texwidth*texheight*4)
 			);
+
+		imguizmo;
 
 	}
 
