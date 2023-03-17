@@ -15,7 +15,8 @@ if not exist "SubModules/Assimp/Assimp.sln" (
 )
 
 cd "SubModules/bgfx"
-..\bx\tools\bin\windows\genie --with-examples vs2017
+..\bx\tools\bin\windows\genie --with-examples vs2022
+..\bx\tools\bin\windows\genie --with-tools vs2022
 cd ../..
 premake5.exe vs2022
 pause
