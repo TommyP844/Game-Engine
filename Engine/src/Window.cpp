@@ -122,8 +122,13 @@ namespace Mule {
 			ImGuiIO& io = ImGui::GetIO();
 			io.DisplaySize.x = width;
 			io.DisplaySize.y = height;
-			
-		
+			bgfx::reset(width, height);
+			});
+
+		   
+		glfwSetWindowCloseCallback(mWindow, [](GLFWwindow* window) {
+			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			win->SetShouldClose();
 			});
 
 	}
