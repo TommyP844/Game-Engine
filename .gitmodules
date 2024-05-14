@@ -1,3 +1,3 @@
-[submodule "DiligentEngine"]
-	path = DiligentEngine
+[submodule "SubModules/DiligentEngine"]
+	path = SubModules/DiligentEngine
 	url = https://github.com/DiligentGraphics/DiligentEngine.git
