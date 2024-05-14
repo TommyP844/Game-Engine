@@ -1,0 +1,12 @@
+.sln
+.vcxproj
+.dll
+.exe
+.bin
+.o
+.git
+.lib
+.vs
+Resources/
+Archive/
+Mule.sln
