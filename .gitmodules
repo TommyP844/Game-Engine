@@ -1,3 +1,15 @@
 [submodule "SubModules/DiligentEngine"]
 	path = SubModules/DiligentEngine
 	url = https://github.com/DiligentGraphics/DiligentEngine.git
+[submodule "SubModules/entt"]
+	path = SubModules/entt
+	url = https://github.com/skypjack/entt
+[submodule "SubModules/glm"]
+	path = SubModules/glm
+	url = https://github.com/g-truc/glm
+[submodule "SubModules/yaml-cpp"]
+	path = SubModules/yaml-cpp
+	url = https://github.com/TommyP844/yaml-cpp
+[submodule "SubModules/glfw"]
+	path = SubModules/glfw
+	url = https://github.com/TommyP844/glfw
