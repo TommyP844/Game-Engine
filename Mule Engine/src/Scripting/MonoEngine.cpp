@@ -1,6 +1,8 @@
 
 #include "Scripting/MonoEngine.h"
 
+#if 0
+
 #include "Log.h"
 
 #include <mono/jit/jit.h>
@@ -161,3 +163,6 @@ namespace Mule
         return data.Fields[fieldName].Field;
     }
 }
+
+
+#endif

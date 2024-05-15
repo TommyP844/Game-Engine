@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include "Util/Singleton.h"
 #include "CSTypeMapper.h"
 #include "MonoEngineClass.h"
@@ -270,3 +272,4 @@ namespace Mule
 		std::string mClassName;
 	};
 }
+#endif

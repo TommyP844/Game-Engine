@@ -6,8 +6,7 @@
 
 #include <entt/entt.hpp>
 #include <yaml-cpp/yaml.h>
-#include "imgui.h"
-#include "Rendering/Camera.h"
+#include "Graphics/Camera.h"
 
 #include <string>
 #include <set>
@@ -50,7 +49,6 @@ namespace Mule
 
 		void IterateParentEntities(std::function<void(Entity)> func);
 
-		void Resize(int width, int height);
 
 		template<typename T, typename ...Args>
 		T& AddComponent(entt::entity id, Args&&... args)
@@ -83,8 +81,6 @@ namespace Mule
 
 		void OnUpdate(float dt);
 		void OnRender(float dt);
-		void OnEditorRender(float dt, const std::set<Entity>& highlightedEntities, const Camera& editorCamera);
-		ImTextureID OutputImage();
 
 		SceneRenderSettings& RenderSettings() { return mSettings; }
 

@@ -22,11 +22,13 @@ project "Mule Engine"
 
 	includedirs 
 	{
-		"include/Mule Engine"
+		"include/Mule",
+		includes
 	}
 
 	links
 	{
+		libs
 	}
 
 	files

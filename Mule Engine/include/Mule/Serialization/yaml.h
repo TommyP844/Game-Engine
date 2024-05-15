@@ -210,15 +210,15 @@ namespace YAML
 		{
 			Node node;
 
-			node["Name"] = "CameraComponent";
-			node["Primary"] = rhs.Primary;
-			node["AspectRatio"] = rhs.Camera.AspectRatio();
-			node["FarPlane"] = rhs.Camera.FarPlane();
-			node["NearPlane"] = rhs.Camera.NearPlane();
-			node["Pitch"] = rhs.Camera.PitchDegrees();
-			node["Yaw"] = rhs.Camera.YawDegrees();
-			node["UpDirection"] = rhs.Camera.WorldUp();
-			node["FOVDegrees"] = rhs.Camera.GetFOVDegrees();
+			//node["Name"] = "CameraComponent";
+			//node["Primary"] = rhs.Primary;
+			//node["AspectRatio"] = rhs.Camera.AspectRatio();
+			//node["FarPlane"] = rhs.Camera.FarPlane();
+			//node["NearPlane"] = rhs.Camera.NearPlane();
+			//node["Pitch"] = rhs.Camera.PitchDegrees();
+			//node["Yaw"] = rhs.Camera.YawDegrees();
+			//node["UpDirection"] = rhs.Camera.WorldUp();
+			//node["FOVDegrees"] = rhs.Camera.GetFOVDegrees();
 
 			return node;
 		}
@@ -235,7 +235,7 @@ namespace YAML
 			glm::vec3 up = node["UpDirection"].as<glm::vec3>();
 			float fov = node["FOVDegrees"].as<float>();
 
-			rhs.Camera = Mule::Camera(up, aspectRatio, nearPlane, farPlane, fov, yaw, pitch);
+			//rhs.Camera = Mule::Camera(up, aspectRatio, nearPlane, farPlane, fov, yaw, pitch);
 
 			return true;
 		}

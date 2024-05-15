@@ -1,4 +1,4 @@
-project "App"
+project "Application"
 	language "C++"
 	kind "StaticLib"
 	location ""
@@ -23,14 +23,16 @@ project "App"
 	includedirs 
 	{
 		"../Mule Engine/include",
-		"../Mule Engine/include/Mule Engine",
-        "include"
+		"../Mule Engine/include/Mule",
+        "include",
+		includes
 	}
 
 	links
 	{
 		"Mule Engine",
-        "opengl32.lib"
+        "opengl32.lib",
+		libs
 	}
 
 	files

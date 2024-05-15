@@ -10,7 +10,7 @@
 
 namespace Mule
 {
-	class Entity : public ScriptableClass
+	class Entity // : public ScriptableClass
 	{
 	public:
 		Entity()
@@ -23,11 +23,11 @@ namespace Mule
 		Entity(entt::entity id, WeakRef<Scene> scene)
 			:
 			mId(id),
-			mScene(scene),
-			ScriptableClass("Entity")
+			mScene(scene)//,
+			//ScriptableClass("Entity")
 		{
-			SetFieldValue<int>("id", (int)mId);
-			scene ? SetFieldValue<Scene*>("scene", scene.Get()) : SetFieldValue("scene", 0);
+			//SetFieldValue<int>("id", (int)mId);
+			//scene ? SetFieldValue<Scene*>("scene", scene.Get()) : SetFieldValue("scene", 0);
 		}
 
 		WeakRef<Scene> GetScene() const { return mScene; }

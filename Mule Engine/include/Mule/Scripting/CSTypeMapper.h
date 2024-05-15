@@ -1,5 +1,7 @@
 #pragma once
 
+#if 0
+
 #include <string>
 #include <unordered_map>
 
@@ -77,3 +79,5 @@ namespace Mule
 	};
 
 }
+
+#endif

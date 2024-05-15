@@ -23,14 +23,16 @@ project "Sandbox"
 	includedirs 
 	{
 		"../Mule Engine/include",
-        "../Mule Engine/include/Mule Engine",
-        "../App/inlude",
-        "include/Mule Engine"
+        "../Mule Engine/include/Mule",
+        "../Application/include",
+        "include/Mule Engine",
+		includes
 	}
 
 	links
 	{
-		"App"
+		"Application",
+		libs
 	}
 
 	files

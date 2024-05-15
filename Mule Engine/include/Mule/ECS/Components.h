@@ -4,7 +4,7 @@
 #include "Guid.h"
 #include "Entity.h"
 #include "Transform.h"
-#include "Rendering/Camera.h"
+#include "Graphics/Camera.h"
 
 #include <string>
 
@@ -73,7 +73,7 @@ namespace Mule
 		ScriptComponent() = default;
 		ScriptComponent(const ScriptComponent&) = default;
 
-		Ref<ScriptableClass> Class;
+		//Ref<ScriptableClass> Class;
 	};
 
 	struct CameraComponent

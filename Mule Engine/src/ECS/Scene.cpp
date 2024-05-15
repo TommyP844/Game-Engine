@@ -136,22 +136,9 @@ namespace Mule
 
 	void Scene::OnUpdate(float dt)
 	{
-		auto cameraView = mRegistry.view<CameraComponent>();
-		for (auto id : cameraView)
-		{
-			auto& camera = GetComponent<CameraComponent>(id);
-			auto& transform = GetComponent<TransformComponent>(id);
-			camera.Camera.UpdateMatrices(transform.Transform.TR());
-		}
 	}
 
 	void Scene::OnRender(float dt)
-	{
-		
-	}
-
-	// TODO: Add editor camera
-	void Scene::OnEditorRender(float dt, const std::set<Entity>& highlightedEntities, const Camera& editorCamera)
 	{
 		
 	}
