@@ -2,115 +2,82 @@
 
 namespace Mule
 {
+	template<typename T = uint8_t>
 	class Buffer
 	{
 	public:
 		Buffer(){}
 		~Buffer(){}
 
-		Buffer(void* data, size_t bytes)
+		const uint32_t TypeSize = sizeof(T);
+
+		Buffer(void* data, size_t count)
 		{
-			SetData(data, bytes);
+			SetData(data, count);
 		}
 
 		Buffer(const Buffer& other)
 		{
-			SetData(other.mData, other.mBytes);
+			SetData(other.mData, other.mCount);
 		}
 
-		Buffer(size_t bytes)
+		Buffer(size_t count)
 		{
-			mData = new char[bytes];
-			mBytes = bytes;
+			mData = new T[count];
+			mCount = count;
 		}
 
-		void SetData(void* data, size_t bytes)
+		void SetData(void* data, size_t count)
 		{
 			Release();
 			mData = data;
-			mBytes = bytes;
+			mCount = count;
 		}
 
-		void Allocate(size_t bytes)
+		void Allocate(size_t count)
 		{
 			Release();
-			mData = new char[bytes];
-			mBytes = bytes;
+			mData = new T[count];
+			mCount = count;
 		}
 
 		void Release()
 		{
 			delete mData;
 			mData = nullptr;
-			mBytes = 0;
+			mCount = 0;
 		}
 
-		void* Data()
+		T* Data()
 		{
 			return mData;
 		}
 
-		void* Data() const
+		T* Data() const
 		{
 			return mData;
 		}
 
-		size_t Bytes()
-		{
-			return mBytes;
-		}
-
-		size_t Bytes() const
-		{
-			return mBytes;
-		}
-
-		template<typename T>
-		T* As()
-		{
-			return (T*)mData;
-		}
-
-		template<typename T>
-		T* As() const
-		{
-			return (T*)mData;
-		}
-
-		template<typename T>
 		size_t Count()
 		{
-			return mBytes / sizeof(T);
+			return mCount;
+		}
+
+		size_t Count() const
+		{
+			return mCount;
 		}
 
 		operator bool() {
-			return mData != nullptr && mBytes > 0;
+			return mData != nullptr && mCount > 0;
 		}
 
 		operator bool() const {
-			return mData != nullptr && mBytes > 0;
+			return mData != nullptr && mCount > 0;
 		}
 
 	protected:
-		void* mData = nullptr;
-		size_t mBytes = 0;
-	};
-
-	class ScopedBuffer : public Buffer
-	{
-		ScopedBuffer(void* data, size_t bytes)
-		{
-			SetData(data, bytes);
-		}
-
-		ScopedBuffer(const Buffer& other)
-		{
-			SetData(other.Data(), other.Bytes());
-		}
-
-		~ScopedBuffer()
-		{
-			Release();
-		}
+		T* mData = nullptr;
+		size_t mCount = 0;
 	};
 }

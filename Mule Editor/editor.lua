@@ -1,4 +1,4 @@
-project "Sandbox"
+project "Mule Editor"
 	language "C++"
 	kind "ConsoleApp"
 	location ""
@@ -25,7 +25,8 @@ project "Sandbox"
         "../Mule Engine/include/Mule",
         "../Application/include",
         "include/Mule Engine",
-		includes
+		includes,
+		"src"
 	}
 
 	links

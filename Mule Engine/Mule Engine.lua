@@ -4,11 +4,11 @@ project "Mule Engine"
 	location ""
 	cppdialect "C++20"
 
+	runtime "Debug"
 	staticruntime "off"
 	optimize "Speed"
 	floatingpoint "Fast"
 	intrinsics "On"
-	vectorextensions "SSE4.2"
 
 	linkoptions { '/NODEFAULTLIB:"libcpmtd.lib"' }
 
@@ -28,7 +28,8 @@ project "Mule Engine"
 
 	links
 	{
-		libs
+		"glfw",
+		"yaml-cpp"
 	}
 
 	files
@@ -37,3 +38,9 @@ project "Mule Engine"
 		"include/**.inl",
 		"src/**.cpp",
 	}
+
+	filter {"configurations:Debug"}
+		links { debugLibs }
+
+	filter {"configurations:Debug"}
+		links { releaseLibs }

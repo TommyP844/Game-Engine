@@ -22,4 +22,8 @@ private:
 	Mule::Ref<Mule::Window> mWindow;
 	bool mAppIsRunning;
 	Mule::Ref<ApplicationData> mApplicationData;
+	Mule::Ref<Mule::GraphicsDevice> mGraphicsDevice;
+	Mule::Ref<Mule::FrameBuffer> mFrameBuffer;
+	Mule::Ref<Mule::RenderPass> mRenderPass;
+	Mule::Ref<Mule::ImGuiMuleContext> mImGuiContext;
 };

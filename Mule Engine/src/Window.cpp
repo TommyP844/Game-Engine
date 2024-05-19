@@ -1,6 +1,7 @@
 
 #include "Window.h"
 
+
 namespace Mule
 {
 	bool Window::Init()
@@ -17,42 +18,68 @@ namespace Mule
 		glfwTerminate();
 	}
 
-	Ref<Window> Window::Create()
+	Ref<Window> Window::Create(const char* title, int width, int height)
 	{
-		Window* win = new Window();
-		win->mEvent = Ref<WindowEvent>::Make();
+		return Ref<Window>(new Window(title, width, height));
+	}
 
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-		GLFWwindow* window = glfwCreateWindow(800, 600, "Title", nullptr, nullptr);
-		glfwSetWindowUserPointer(window, win);
-		glfwMakeContextCurrent(window);
+	Window::Window(const char* title, int width, int height)
+	{
+		mWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
+		glfwSetWindowUserPointer(mWindow, this);
+		glfwMakeContextCurrent(mWindow);
 		glfwSwapInterval(0); // disable vsync
 
-		glfwSetMouseButtonCallback(window, [](GLFWwindow* window, int button, int action, int mods) {
+		glfwSetMouseButtonCallback(mWindow, [](GLFWwindow* window, int button, int action, int mods) {
 			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::MouseButton;
 
-			win->mEvent->Mousebuttons[button] = action == GLFW_PRESS ? 1 : 0;
+			event->Mouse.Button = (MouseButton)button;
+			event->Mouse.Pressed = action == GLFW_PRESS;
+				
+
+			win->AddEvent(event);
 			});
 
-		
-		glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
-			Window* win = (Window*)glfwGetWindowUserPointer(window);
 
-			win->mEvent->KeyPressed[key] = action == GLFW_PRESS ? 1 : 0;
+		glfwSetKeyCallback(mWindow, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::Key;
+			
+			event->Keyboard.Pressed = action == GLFW_PRESS;
+			event->Keyboard.Key = (Key)key;
+
+			win->AddEvent(event);
 			});
 
-		glfwSetCursorPosCallback(window, [](GLFWwindow* window, double xpos, double ypos) {
+		glfwSetCursorPosCallback(mWindow, [](GLFWwindow* window, double xpos, double ypos) {
 			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::MouseMove;
 
-			win->mEvent->MouseX = xpos;
-			win->mEvent->MouseY = ypos;
+			event->Mouse.MouseX = xpos;
+			event->Mouse.MouseY = ypos;
+
+			win->AddEvent(event);
 			});
-		
-		glClearColor(0, 0, 0, 1);
 
-		win->mWindow = window;
-		return Ref<Window>(win);
+		glfwSetWindowSizeCallback(mWindow, [](GLFWwindow* window, int width, int height) {
+			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::WindowResize;
+
+			event->Window.Width = width;
+			event->Window.Height = height;
+
+			win->AddEvent(event);
+		});
+	}
+
+	HWND Window::GetWin32Window()
+	{
+		return glfwGetWin32Window(mWindow);
 	}
 
 	void Window::SwapBuffers()
@@ -65,9 +92,15 @@ namespace Mule
 		return glfwWindowShouldClose(mWindow);
 	}
 
-	Ref<WindowEvent> Window::PollEvents()
+	void Window::AddEvent(Ref<WindowEvent> event)
 	{
+		mFrameEvents.push_back(event);
+	}
+
+	const std::vector<Ref<WindowEvent>>& Window::PollEvents()
+	{
+		mFrameEvents.clear();
 		glfwPollEvents();
-		return mEvent;
+		return mFrameEvents;
 	}
 }

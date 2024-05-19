@@ -26,3 +26,9 @@
 #include "Mule/Layer.h"
 #include "Mule/Asset/AssetManager.h"
 
+#include "Mule/Graphics/GraphicsDevice.h"
+#include "Mule/Graphics/GraphicsTypes.h"
+#include "Mule/Graphics/FrameBuffer.h"
+#include "Mule/Graphics/RenderPass.h"
+#include "Mule/Graphics/ImGuiMuleContext.h"
+

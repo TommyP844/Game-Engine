@@ -132,12 +132,20 @@ namespace Mule
         MAX_KEYS = 512
     };
 
-    enum class MouseButtons : uint32_t
+    enum class MouseButton : uint32_t
     {
         Left = GLFW_MOUSE_BUTTON_LEFT,
         Middle = GLFW_MOUSE_BUTTON_MIDDLE,
         Right = GLFW_MOUSE_BUTTON_RIGHT,
         MAX_BUTTONS
+    };
+
+    enum class WindowEventType
+    {
+        Key,
+        MouseMove,
+        MouseButton,
+        WindowResize
     };
 
 	class WindowEvent : public Event
@@ -148,9 +156,23 @@ namespace Mule
             Event(EventType::WindowEvent)
         {}
 
-        bool KeyPressed[(int)Key::MAX_KEYS] = { false };
-        int MouseX;
-        int MouseY;
-        bool Mousebuttons[(int)MouseButtons::MAX_BUTTONS] = { false };
+        WindowEventType Type;
+
+        struct {
+            int Width;
+            int Height;
+        } Window;
+
+        struct {
+            Key Key;
+            bool Pressed;
+        } Keyboard;
+
+        struct {
+            MouseButton Button;
+            int MouseX;
+            int MouseY;
+            bool Pressed;
+        } Mouse;
 	};
 }
