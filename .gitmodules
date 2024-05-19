@@ -13,3 +13,7 @@
 [submodule "SubModules/glfw"]
 	path = SubModules/glfw
 	url = https://github.com/TommyP844/glfw
+[submodule "SubModules/ImGui"]
+	path = SubModules/ImGui
+	url = https://github.com/ocornut/imgui
+	branch = docking
