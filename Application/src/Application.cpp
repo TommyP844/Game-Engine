@@ -23,30 +23,6 @@ void Application::Setup()
 
 	mGraphicsDevice = Mule::GraphicsDevice::Create(Mule::GraphicsAPI::Vulkan, mWindow);
 
-
-	Mule::RenderPassDescription renderPassDesc;
-	renderPassDesc.Attachments.push_back({Mule::TextureFormat::RGBA8_SRGB, Mule::Samples::SampleCount_1});
-	renderPassDesc.DepthAttachment = { Mule::TextureFormat::Depth32F, Mule::Samples::SampleCount_1};
-	renderPassDesc.Name = "Main";
-	renderPassDesc.Context = mGraphicsDevice->GetMainThreadContext();
-	renderPassDesc.SubPasses.push_back({
-		{},
-		{0},
-		true
-		});
-
-	mRenderPass = Mule::RenderPass::Create(mGraphicsDevice, renderPassDesc);
-
-	Mule::FrameBufferDescription desc;
-	desc.Name = "Main";
-	desc.Width = WIDTH;
-	desc.Height = HEIGHT;
-	desc.RenderPass = mRenderPass;
-	desc.BuildForSwapChain = true;
-
-	mFrameBuffer = Mule::FrameBuffer::Create(mGraphicsDevice, desc);
-
-
 	Mule::ImGuiMuleCreateInfo imGuiInfo{};
 	imGuiInfo.Window = mWindow;
 	imGuiInfo.Context = mGraphicsDevice->GetMainThreadContext();
@@ -69,10 +45,14 @@ void Application::Run()
 			mImGuiContext->AddEvent(event);
 		}
 
-		mImGuiContext->BeginFrame();
-		ImGui::Begin("Test");
-		ImGui::End();
-		mImGuiContext->Render();
+		if (!mLayers.empty())
+		{
+			auto layer = mLayers.top();
+			layer->OnUpdate();
+			mImGuiContext->BeginFrame();
+			layer->OnImGuiRender();
+			mImGuiContext->Render();
+		}
 
 		mGraphicsDevice->SwapBuffers();
 	}

@@ -4,10 +4,7 @@ project "Mule Editor"
 	location ""
 	cppdialect "C++20"
 	runtime "Debug"
-	staticruntime "off"
-	optimize "Speed"
-	floatingpoint "Fast"
-	intrinsics "On"
+	staticruntime "Off"
 
 	linkoptions { '/NODEFAULTLIB:"libcpmtd.lib"' }
 
@@ -45,6 +42,3 @@ project "Mule Editor"
 
 	filter {"configurations:Debug"}
 		links { debugLibs }
-
-	filter {"configurations:Debug"}
-		links { releaseLibs }

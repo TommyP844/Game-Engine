@@ -4,7 +4,7 @@ project "Sandbox"
 	location ""
 	cppdialect "C++20"
 	runtime "Debug"
-	staticruntime "off"
+	staticruntime "Off"
 	optimize "Speed"
 	floatingpoint "Fast"
 	intrinsics "On"
@@ -45,5 +45,5 @@ project "Sandbox"
 	filter {"configurations:Debug"}
 		links { debugLibs }
 
-	filter {"configurations:Debug"}
+	filter {"configurations:Release"}
 		links { releaseLibs }

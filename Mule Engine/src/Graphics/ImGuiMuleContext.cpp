@@ -1,5 +1,6 @@
 #include "Graphics/ImGuiMuleContext.h"
 
+#include "imgui.h"
 
 #include <glm.hpp>
 

@@ -8,15 +8,16 @@
 class ContentBrowser : public Panel
 {
 public:
-	ContentBrowser(EditorLayer* editor)
+	ContentBrowser(Mule::Ref<ApplicationData> appData)
 		:
-		Panel("Content Browser", editor)
+		Panel("Content Browser", appData)
 	{}
 
 	virtual void OnAttach() override;
 	virtual void OnUpdate(float dt) override;
 	virtual void OnDetach() override;
 	virtual void OnEvent(Mule::Ref<Mule::Event> event) override;
+	virtual void OnImGuiRender() override;
 
 private:
 	fs::path mAssetPath;

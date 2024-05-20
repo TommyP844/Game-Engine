@@ -14,5 +14,6 @@ public:
 	virtual void OnAttach() override;
 	virtual void OnDetach() override;
 	virtual void OnUpdate(float dt = 0.f) override;
-	virtual void OnUIRender(float dt = 0.f) override;
+	virtual void OnImGuiRender(float dt = 0.f) override;
+	virtual void OnEvent(Mule::Ref<Mule::Event> event) override;
 };

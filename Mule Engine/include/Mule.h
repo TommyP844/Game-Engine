@@ -32,3 +32,5 @@
 #include "Mule/Graphics/RenderPass.h"
 #include "Mule/Graphics/ImGuiMuleContext.h"
 
+#include "imgui.h"
+

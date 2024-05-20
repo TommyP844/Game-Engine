@@ -4,10 +4,6 @@
 #include "Layers/EditorLayer.h"
 #include "Util.h"
 
-#include "TextEditorPanel.h"
-#include "MaterialEditorPanel.h"
-
-#include "ThumbnailManager.h"
 
 #include <set>
 #include <fstream>
@@ -15,171 +11,13 @@
 
 void ContentBrowser::OnAttach()
 {
-	mAssetPath = mEditorState.ProjectPath / "Assets";
-	mBrowserDirectory = mAssetPath;
+	//mAssetPath = mEditorState.ProjectPath / "Assets";
+	//mBrowserDirectory = mAssetPath;
 }
 
 void ContentBrowser::OnUpdate(float dt)
 {
-	if (!fs::exists(mAssetPath))
-	{
-		fs::create_directory(mAssetPath);
-	}
-
-	if (ImGui::Begin(Name().c_str()))
-	{
-		if (mEditorState.AssetsLoaded)
-		{
-			ThumbnailManager::Get().OnUpdate();
-		}
-
-		float width = ImGui::GetContentRegionAvail().x;
-		float windowPadding = ImGui::GetStyle().WindowPadding.x;
-		if (ImGui::BeginChild("Folders", { width * 0.25f - 1.f * windowPadding, 0 }, ImGuiChildFlags_Border))
-		{
-			ImGui::Text("Assets");
-			ImGui::Separator();
-			
-			for (auto& path : fs::directory_iterator(mAssetPath))
-			{
-				if (path.is_directory())
-				{
-					float width = ImGui::GetContentRegionAvail().x;
-					if (ImGui::Button(path.path().filename().string().c_str(), { width, 0 }))
-					{
-						mBrowserDirectory = path.path();
-						mShouldSearch = false;
-						memset(mSearchBuffer, 0, 256);
-					}
-					DRAG_DROP_TARGET(DRAG_DROP_FILE, [&](const ImGuiPayload* payload) {
-						fs::path filepath = std::string((char*)payload->Data, payload->DataSize);
-						fs::rename(filepath, path.path() / path.path().filename());
-						});
-				}
-			}
-		}
-		ImGui::EndChild();
-		ImGui::SameLine();
-		if (ImGui::BeginChild("Content", { width * 0.75f, 0 }, ImGuiChildFlags_Border))
-		{
-			auto assetDir = mBrowserDirectory.lexically_relative(mAssetPath.parent_path());
-			ImGui::Text("Path:");
-			ImGui::SameLine();
-			
-			fs::path iterativePath;
-			for (auto& file : assetDir)
-			{
-				std::string breadCrumb = file == "." ? "Assets" : file.string();
-				iterativePath /= file;
-				ImGui::SameLine();
-
-				if (mBrowserDirectory.filename() == file)
-				{
-					ImGui::Text(breadCrumb.c_str());
-				}
-				else if (ImGui::Button(breadCrumb.c_str()))
-				{
-					mBrowserDirectory = mEditorState.ProjectPath / iterativePath;
-					//mBrowserDirectory = mAssetPath / iterativePath;
-					mShouldSearch = false;
-					memset(mSearchBuffer, 0, 256);
-				}
-
-				ImGui::SameLine();
-				ImGui::Text("\\");				
-			}
-
-			ImGui::SameLine();
-			ImGui::PushItemWidth(150.f);
-			if (ImGui::InputText("Search", mSearchBuffer, 256))
-			{
-				mSearchString = mSearchBuffer;
-				if (!mSearchString.empty())
-				{
-					mShouldSearch = true;
-				}
-				else
-				{
-					mShouldSearch = false;
-				}
-			}
-
-			ImGui::Separator();
-			if (ImGui::BeginChild("Content-Data", ImGui::GetContentRegionAvail()))
-			{
-				if (ImGui::BeginPopupContextWindow("##RightClickContent"))
-				{
-					if (ImGui::BeginMenu("Create"))
-					{
-						if (ImGui::MenuItem("Shader"))
-						{
-							std::string shaderName = "Shader.mshader";
-							if (fs::exists(mBrowserDirectory / shaderName))
-								shaderName = GenerateNewFilename(shaderName, mBrowserDirectory);
-
-							std::ofstream shaderFile(mBrowserDirectory / shaderName);
-							shaderFile.close();
-							mLayer->PushPanel<TextEditorPanel>(PanelType::TextEditorPanel, mBrowserDirectory / shaderName, mLayer);
-						}
-						if (ImGui::MenuItem("Material"))
-						{
-							std::string materialName = "Material.mmaterial";
-							if (fs::exists(mBrowserDirectory / materialName))
-								materialName = GenerateNewFilename(materialName, mBrowserDirectory);
-
-							auto material = Mule::Material::Create(mBrowserDirectory / materialName);
-							material->Save();
-						}
-						if (ImGui::MenuItem("Folder"))
-						{
-							std::string folderName = "New Folder";
-							if (fs::exists(mBrowserDirectory / folderName))
-								folderName = GenerateNewFilename(folderName, mBrowserDirectory);
-
-							fs::create_directory(mBrowserDirectory / folderName);
-						}
-						ImGui::EndMenu();
-					}
-					ImGui::EndPopup();
-				}
-
-				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10, 10 });
-				const float maxWidth = ImGui::GetContentRegionAvail().x;
-				const float padding = ImGui::GetStyle().ItemSpacing.x;
-				float total = mFileWidth;
-				for (auto& dir : fs::directory_iterator(mBrowserDirectory))
-				{
-					if (mShouldSearch)
-					{
-						if (!FuzzySearch(mSearchString, dir.path().filename().string(), 3))
-						{
-							continue;
-						}
-					}
-
-					total += mFileWidth + padding;
-
-					bool doubleClicked = DisplayFile(dir);
-					if (doubleClicked && dir.is_directory())
-					{
-						mBrowserDirectory = dir.path();
-					}
-					if (total >= maxWidth)
-					{
-						total = mFileWidth;
-					}
-					else
-					{
-						ImGui::SameLine();
-					}
-				}
-				ImGui::PopStyleVar();
-			}
-			ImGui::EndChild();
-		}
-		ImGui::EndChild();
-	}
-	ImGui::End();
+	
 }
 
 void ContentBrowser::OnDetach()
@@ -188,6 +26,146 @@ void ContentBrowser::OnDetach()
 
 void ContentBrowser::OnEvent(Mule::Ref<Mule::Event> event)
 {
+}
+
+void ContentBrowser::OnImGuiRender()
+{
+	if (ImGui::Begin(Name().c_str()))
+	{
+
+		float width = ImGui::GetContentRegionAvail().x;
+		float windowPadding = ImGui::GetStyle().WindowPadding.x;
+		//if (ImGui::BeginChild("Folders", { width * 0.25f - 1.f * windowPadding, 0 }, ImGuiChildFlags_Border))
+		//{
+		//	ImGui::Text("Assets");
+		//	ImGui::Separator();
+		//	
+		//	for (auto& path : fs::directory_iterator(mAssetPath))
+		//	{
+		//		if (path.is_directory())
+		//		{
+		//			float width = ImGui::GetContentRegionAvail().x;
+		//			if (ImGui::Button(path.path().filename().string().c_str(), { width, 0 }))
+		//			{
+		//				mBrowserDirectory = path.path();
+		//				mShouldSearch = false;
+		//				memset(mSearchBuffer, 0, 256);
+		//			}
+		//		}
+		//	}
+		//}
+		//ImGui::EndChild();
+		//ImGui::SameLine();
+		//if (ImGui::BeginChild("Content", { width * 0.75f, 0 }, ImGuiChildFlags_Border))
+		//{
+		//	auto assetDir = mBrowserDirectory.lexically_relative(mAssetPath.parent_path());
+		//	ImGui::Text("Path:");
+		//	ImGui::SameLine();
+		//	
+		//	fs::path iterativePath;
+		//	for (auto& file : assetDir)
+		//	{
+		//		std::string breadCrumb = file == "." ? "Assets" : file.string();
+		//		iterativePath /= file;
+		//		ImGui::SameLine();
+		//
+		//		if (mBrowserDirectory.filename() == file)
+		//		{
+		//			ImGui::Text(breadCrumb.c_str());
+		//		}
+		//		else if (ImGui::Button(breadCrumb.c_str()))
+		//		{
+		//			//mBrowserDirectory = mEditorState.ProjectPath / iterativePath;
+		//			//mBrowserDirectory = mAssetPath / iterativePath;
+		//			mShouldSearch = false;
+		//			memset(mSearchBuffer, 0, 256);
+		//		}
+		//
+		//		ImGui::SameLine();
+		//		ImGui::Text("\\");				
+		//	}
+		//
+		//	ImGui::SameLine();
+		//	ImGui::PushItemWidth(150.f);
+		//	if (ImGui::InputText("Search", mSearchBuffer, 256))
+		//	{
+		//		mSearchString = mSearchBuffer;
+		//		if (!mSearchString.empty())
+		//		{
+		//			mShouldSearch = true;
+		//		}
+		//		else
+		//		{
+		//			mShouldSearch = false;
+		//		}
+		//	}
+		//
+		//	ImGui::Separator();
+		//	if (ImGui::BeginChild("Content-Data", ImGui::GetContentRegionAvail()))
+		//	{
+		//		if (ImGui::BeginPopupContextWindow("##RightClickContent"))
+		//		{
+		//			if (ImGui::BeginMenu("Create"))
+		//			{
+		//				if (ImGui::MenuItem("Material"))
+		//				{
+		//					std::string materialName = "Material.mmaterial";
+		//					if (fs::exists(mBrowserDirectory / materialName))
+		//						materialName = GenerateNewFilename(materialName, mBrowserDirectory);
+		//
+		//					//auto material = Mule::Material::Create(mBrowserDirectory / materialName);
+		//					//material->Save();
+		//				}
+		//				if (ImGui::MenuItem("Folder"))
+		//				{
+		//					std::string folderName = "New Folder";
+		//					if (fs::exists(mBrowserDirectory / folderName))
+		//						folderName = GenerateNewFilename(folderName, mBrowserDirectory);
+		//
+		//					fs::create_directory(mBrowserDirectory / folderName);
+		//				}
+		//				ImGui::EndMenu();
+		//			}
+		//			ImGui::EndPopup();
+		//		}
+		//
+		//		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 10, 10 });
+		//		const float maxWidth = ImGui::GetContentRegionAvail().x;
+		//		const float padding = ImGui::GetStyle().ItemSpacing.x;
+		//		float total = mFileWidth;
+		//		for (auto& dir : fs::directory_iterator(mBrowserDirectory))
+		//		{
+		//			if (mShouldSearch)
+		//			{
+		//				if (!FuzzySearch(mSearchString, dir.path().filename().string(), 3))
+		//				{
+		//					continue;
+		//				}
+		//			}
+		//
+		//			total += mFileWidth + padding;
+		//
+		//			bool doubleClicked = DisplayFile(dir);
+		//			if (doubleClicked && dir.is_directory())
+		//			{
+		//				mBrowserDirectory = dir.path();
+		//			}
+		//			if (total >= maxWidth)
+		//			{
+		//				total = mFileWidth;
+		//			}
+		//			else
+		//			{
+		//				ImGui::SameLine();
+		//			}
+		//		}
+		//		ImGui::PopStyleVar();
+		//	}
+		//	ImGui::EndChild();
+		//}
+		//ImGui::EndChild();
+	}
+	ImGui::End();
 }
 
 static ImU32 Vec4ToImCol32(const ImVec4& color) {
@@ -215,7 +193,6 @@ bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
 
 	bool ret = false;
 	ImGui::InvisibleButton(entry.path().string().c_str(), { mFileWidth, height }, ImGuiButtonFlags_PressedOnClick | ImGuiButtonFlags_MouseButtonLeft);
-	DRAG_DROP_SOURCE(DRAG_DROP_FILE, entry.path().string().data(), entry.path().string().size());
 	if (ImGui::IsItemHovered())
 	{
 		tintColor = ImVec4(0.1f, 0.1f, 0.1f, 0.2f);
@@ -236,21 +213,9 @@ bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
 			{
 			case FileType::Shader:
 			case FileType::Unknown:
-					mLayer->PushPanel<TextEditorPanel>(PanelType::TextEditorPanel, entry.path(), mLayer);
 				break;
 			case FileType::Material:
 			{
-				if (manager.DoesAssetExist(entry.path(), Mule::AssetType::Material))
-				{
-					auto material = manager.GetAssetByFilepath<Mule::Material>(entry.path());
-					mLayer->PushPanel<MaterialEditorPanel>(PanelType::MaterialEditorPanel, mLayer, material);
-				}
-				else
-				{
-					auto material = Mule::Material::Load(entry.path());
-					manager.InsertAsset(material);
-					mLayer->PushPanel<MaterialEditorPanel>(PanelType::MaterialEditorPanel, mLayer, material);
-				}
 			}
 				break;
 			}
@@ -269,44 +234,6 @@ bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
 	}
 
 	ImTextureID id;
-	if (mEditorState.AssetsLoaded)
-	{
-		id = ThumbnailManager::Get().GetAssetThumbnail(entry.path());
-	}
-	else
-	{
-		if (entry.is_directory())
-			id = ThumbnailManager::Get().GetFolderTextureID();
-		else
-			id = ThumbnailManager::Get().GetFileTextureID();
-	}
-
-
-	switch (type)
-	{
-	case FileType::Scene:
-		DRAG_DROP_SOURCE(DRAG_DROP_SCENE_FILE, entry.path().string().data(), entry.path().string().size());
-		break;
-	case FileType::Texture:
-		DRAG_DROP_SOURCE(DRAG_DROP_TEXTURE_FILE, entry.path().string().data(), entry.path().string().size());
-		break;
-	case FileType::Directory:
-		DRAG_DROP_TARGET(DRAG_DROP_FILE, [&](const ImGuiPayload* payload) {
-			fs::path path = std::string((char*)payload->Data, payload->DataSize);
-			fs::rename(path, entry.path() / path.filename());		
-			});
-		break;
-	case FileType::Mesh:
-		DRAG_DROP_SOURCE(DRAG_DROP_MODEL_FILE, entry.path().string().data(), entry.path().string().size());
-		break;
-	case FileType::Shader:
-		DRAG_DROP_SOURCE(DRAG_DROP_SHADER_FILE, entry.path().string().data(), entry.path().string().size());
-		break;
-	case FileType::Material:
-		DRAG_DROP_SOURCE(DRAG_DROP_MATERIAL_FILE, entry.path().string().data(), entry.path().string().size());
-		
-		break;
-	}
 
 	ImVec4 borderCol = ImGui::GetStyle().Colors[ImGuiCol_Border];
 	ImVec4 bgColor = ImGui::GetStyle().Colors[ImGuiCol_DockingEmptyBg];

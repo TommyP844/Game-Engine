@@ -12,6 +12,11 @@ void SandboxLayer::OnUpdate(float dt)
 {
 }
 
-void SandboxLayer::OnUIRender(float dt)
+void SandboxLayer::OnImGuiRender(float dt)
+{
+
+}
+
+void SandboxLayer::OnEvent(Mule::Ref<Mule::Event> event)
 {
 }
