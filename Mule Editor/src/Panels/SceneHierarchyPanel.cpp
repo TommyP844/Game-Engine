@@ -1,5 +1,7 @@
 #include "SceneHierarchyPanel.h"
 
+#include "ImGuiUtil.h"
+
 static void DisplayEntityHierarchy(Mule::Entity entity, std::set<Mule::Entity>& selected)
 {
 	std::string label = entity.Tag() + "##" + std::to_string(entity.ID());
@@ -11,6 +13,16 @@ static void DisplayEntityHierarchy(Mule::Entity entity, std::set<Mule::Entity>& 
 		flags |= ImGuiTreeNodeFlags_Selected;
 
 	bool open = ImGui::TreeNodeEx(label.c_str(), flags);
+	DragDropModelToEntity(entity);
+
+	int id = entity.ID();
+	DragDropSource(ENTITY_ID_PAYLOAD, &id, sizeof(uint32_t));
+	DragDropTarget(ENTITY_ID_PAYLOAD, [&](const ImGuiPayload* payload) {
+		uint32_t ddid = TypeFromPayload<uint32_t>(payload);
+		if (ddid == id)
+			return;
+		entity.AddChild(Mule::Entity((entt::entity)ddid, entity.GetScene()));
+		});
 
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 	{
@@ -33,6 +45,10 @@ static void DisplayEntityHierarchy(Mule::Entity entity, std::set<Mule::Entity>& 
 			ImGui::EndPopup();
 			if (open) ImGui::TreePop();
 			return;
+		}
+		if (ImGui::MenuItem("Orphan"))
+		{
+			entity.Orphan();
 		}
 		ImGui::EndPopup();
 	}
@@ -74,29 +90,39 @@ void SceneHierarchyPanel::OnEvent(Mule::Ref<Mule::Event> event)
 
 void SceneHierarchyPanel::OnImGuiRender()
 {
-	int flags = 0;
+	Mule::Ref<Mule::Scene> scene = mEditorState->GetActiveScene();
 
-	if (ImGui::Begin(Name().c_str(), nullptr, flags))
+	int flags = 0;
+	if (scene)
 	{
-		//ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-		//if (ImGui::TreeNode(mEditorState.GetActiveScene()->Name().c_str()))
-		//{
-		//	if (ImGui::BeginPopupContextWindow("Scene Popup"))
-		//	{
-		//		ImGui::Text(mEditorState.GetActiveScene()->Name().c_str());
-		//		ImGui::Separator();
-		//		if(ImGui::MenuItem("Add Entity"))
-		//		{
-		//			mEditorState.GetActiveScene()->CreateEntity();
-		//		}
-		//		ImGui::EndPopup();
-		//	}
-		//
-		//	mEditorState.GetActiveScene()->IterateParentEntities([&](Mule::Entity e) {
-		//		DisplayEntityHierarchy(e, mEditorState.SelectedEntities);
-		//		});
-		//	ImGui::TreePop();
-		//}
+		flags |= scene->Modified() ? ImGuiWindowFlags_UnsavedDocument : 0;
 	}
-	ImGui::End();
+
+	if (mIsOpen)
+	{
+		if (ImGui::Begin(Name().c_str(), &mIsOpen, flags))
+		{
+			if (scene == nullptr)
+			{
+				ImGui::Text("No scene loaded");
+			}
+			else
+			{
+				if (ImGui::BeginPopupContextWindow("Scene Popup"))
+				{
+					if (ImGui::MenuItem("Add Entity"))
+					{
+						scene->CreateEntity();
+					}
+					ImGui::EndPopup();
+				}
+
+				ImGui::Text("Scene: %s", scene->Name().c_str());
+				scene->IterateParentEntities([&](Mule::Entity e) {
+					DisplayEntityHierarchy(e, mEditorState->SelectedEntities);
+					});
+			}
+		}
+		ImGui::End();
+	}
 }

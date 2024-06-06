@@ -133,7 +133,7 @@ namespace YAML
 		{
 			Node node;
 			node["Translation"] = rhs.Translation;
-			node["Orientation"] = rhs.Orientation;
+			node["Orientation"] = rhs.Rotation;
 			node["Scale"] = rhs.Scale;
 			return node;
 		}
@@ -141,67 +141,13 @@ namespace YAML
 		static bool decode(const Node& node, Mule::Transform& rhs)
 		{
 			rhs.Translation = node["Translation"].as<glm::vec3>();
-			rhs.Orientation = node["Orientation"].as<glm::quat>();
+			rhs.Rotation = node["Orientation"].as<glm::vec3>();
 			rhs.Scale = node["Scale"].as<glm::vec3>();
 
 			return true;
 		}
 	};
 
-
-	// Components
-	template<>
-	struct convert<Mule::ModelComponent>
-	{
-		static Node encode(const Mule::ModelComponent& rhs)
-		{
-			Node node;
-
-			node["Name"] = "ModelComponent";
-			node["ModelHandle"] = rhs.ModelHandle;
-			
-			for (auto meshData : rhs.MeshData)
-			{
-				YAML::Node mesh;
-
-				mesh["MeshHandle"] = meshData.MeshHandle;
-				mesh["MaterialHandle"] = meshData.MaterialHandle;
-				mesh["CastsShadows"] = meshData.CastsShadows;
-				mesh["ReceiveShadows"] = meshData.ReceiveShadows;
-				mesh["Visible"] = meshData.Visible;
-
-				node["Meshes"].push_back(mesh);
-			}
-
-			return node;
-		}
-
-		static bool decode(const Node& node, Mule::ModelComponent& rhs)
-		{
-			rhs.ModelHandle = node["ModelHandle"].as<Mule::AssetHandle>();
-
-			for (auto mesh : node["Meshes"])
-			{
-				Mule::AssetHandle meshHandle = mesh["MeshHandle"].as<Mule::AssetHandle>();
-				Mule::AssetHandle materialHandle = mesh["MaterialHandle"].as<Mule::AssetHandle>();
-				bool castsShadows = mesh["CastsShadows"].as<bool>();
-				bool receiveShadows = mesh["ReceiveShadows"].as<bool>();
-				bool visible = mesh["Visible"].as<bool>();
-
-				Mule::ModelComponentMesh data;
-
-				data.CastsShadows = castsShadows;
-				data.MaterialHandle = materialHandle;
-				data.MeshHandle = meshHandle;
-				data.ReceiveShadows = receiveShadows;
-				data.Visible = visible;
-
-				rhs.MeshData.push_back(data);
-			}
-
-			return true;
-		}
-	};
 
 	template<>
 	struct convert<Mule::CameraComponent>
@@ -210,15 +156,15 @@ namespace YAML
 		{
 			Node node;
 
-			//node["Name"] = "CameraComponent";
-			//node["Primary"] = rhs.Primary;
-			//node["AspectRatio"] = rhs.Camera.AspectRatio();
-			//node["FarPlane"] = rhs.Camera.FarPlane();
-			//node["NearPlane"] = rhs.Camera.NearPlane();
-			//node["Pitch"] = rhs.Camera.PitchDegrees();
-			//node["Yaw"] = rhs.Camera.YawDegrees();
-			//node["UpDirection"] = rhs.Camera.WorldUp();
-			//node["FOVDegrees"] = rhs.Camera.GetFOVDegrees();
+			node["Name"] = "CameraComponent";
+			node["Primary"] = rhs.Primary;
+			node["AspectRatio"] = rhs.Camera.GetAspectRatio();
+			node["FarPlane"] = rhs.Camera.GetFarPlane();
+			node["NearPlane"] = rhs.Camera.GetNearPlane();
+			node["Pitch"] = rhs.Camera.GetPitchDegrees();
+			node["Yaw"] = rhs.Camera.GetYawDegrees();
+			node["UpDirection"] = rhs.Camera.GetWorldUp();
+			node["FOVDegrees"] = rhs.Camera.GetFOVDegrees();
 
 			return node;
 		}
@@ -235,7 +181,15 @@ namespace YAML
 			glm::vec3 up = node["UpDirection"].as<glm::vec3>();
 			float fov = node["FOVDegrees"].as<float>();
 
-			//rhs.Camera = Mule::Camera(up, aspectRatio, nearPlane, farPlane, fov, yaw, pitch);
+			rhs.Camera = Mule::Camera();
+			rhs.Camera.SetAspectRatio(aspectRatio);
+			rhs.Camera.SetNearPlane(nearPlane);
+			rhs.Camera.SetFarPlane(farPlane);
+			rhs.Camera.SetPitchDegrees(pitch);
+			rhs.Camera.SetYawDegrees(yaw);
+			rhs.Camera.SetWorldUp(up);
+			rhs.Camera.SetFOVDegrees(fov);
+
 
 			return true;
 		}
@@ -249,8 +203,6 @@ namespace YAML
 			Node node;
 
 			node["Name"] = "DirectionalLightComponent";
-			node["Active"] = rhs.Active;
-			node["Visible"] = rhs.Visible;
 			node["Color"] = rhs.Color;
 			node["Intensity"] = rhs.Intensity;
 
@@ -259,8 +211,6 @@ namespace YAML
 
 		static bool decode(const Node& node, Mule::DirectionalLightComponent& rhs)
 		{
-			rhs.Active = node["Active"].as<bool>();
-			rhs.Visible = node["Visible"].as<bool>();
 			rhs.Color = node["Color"].as<glm::vec3>();
 			rhs.Intensity = node["Intensity"].as<float>();
 
@@ -276,28 +226,16 @@ namespace YAML
 			Node node;
 
 			node["Name"] = "SpotLightComponent";
-			node["Active"] = rhs.Active;
-			node["Visible"] = rhs.Visible;
 			node["Color"] = rhs.Color;
 			node["Intensity"] = rhs.Intensity;
-			node["Attenuation Constant"] = rhs.AttenuationConstant;
-			node["Attenuation Linear"] = rhs.AttenuationLinear;
-			node["Attenuation Quadratic"] = rhs.AttenuationQuadratic;
-			node["Angle"] = rhs.Theta;
 
 			return node;
 		}
 
 		static bool decode(const Node& node, Mule::SpotLightComponent& rhs)
 		{
-			rhs.Active = node["Active"].as<bool>();
-			rhs.Visible = node["Visible"].as<bool>();
 			rhs.Color = node["Color"].as<glm::vec3>();
 			rhs.Intensity = node["Intensity"].as<float>();
-			rhs.AttenuationConstant = node["Attenuation Constant"].as<float>();
-			rhs.AttenuationLinear = node["Attenuation Linear"].as<float>();
-			rhs.AttenuationQuadratic = node["Attenuation Quadratic"].as<float>();
-			rhs.Theta = node["Angle"].as<float>();
 
 			return true;
 		}
@@ -311,26 +249,16 @@ namespace YAML
 			Node node;
 
 			node["Name"] = "PointLightComponent";
-			node["Active"] = rhs.Active;
-			node["Visible"] = rhs.Visible;
 			node["Color"] = rhs.Color;
 			node["Intensity"] = rhs.Intensity;
-			node["Attenuation Constant"] = rhs.AttenuationConstant;
-			node["Attenuation Linear"] = rhs.AttenuationLinear;
-			node["Attenuation Quadratic"] = rhs.AttenuationQuadratic;
 
 			return node;
 		}
 
 		static bool decode(const Node& node, Mule::PointLightComponent& rhs)
 		{
-			rhs.Active = node["Active"].as<bool>();
-			rhs.Visible = node["Visible"].as<bool>();
 			rhs.Color = node["Color"].as<glm::vec3>();
 			rhs.Intensity = node["Intensity"].as<float>();
-			rhs.AttenuationConstant = node["Attenuation Constant"].as<float>();
-			rhs.AttenuationLinear = node["Attenuation Linear"].as<float>();
-			rhs.AttenuationQuadratic = node["Attenuation Quadratic"].as<float>();
 
 			return true;
 		}

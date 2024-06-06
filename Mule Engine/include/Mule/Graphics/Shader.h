@@ -3,6 +3,11 @@
 #include "GraphicsDevice.h"
 #include "Util/Buffer.h"
 #include "RenderPass.h"
+#include "Asset/Asset.h"
+
+#include "DiligentCore/Graphics/GraphicsTools/interface/MapHelper.hpp"
+#include "UniformBuffer.h"
+#include "Texture.h"
 
 #include <filesystem>
 
@@ -21,40 +26,50 @@ namespace Mule
 		uint32_t SubPassIndex;
 
 		std::string Name;
-		fs::path VertexPath;
-		fs::path FragmentPath;
+		fs::path Path;
 	};
 
-	struct BinaryShaderDescription
+	enum class ShaderStage
 	{
-		RenderContext Context;
-		WeakRef<GraphicsDevice> Device;
-
-		std::string Name;
-		Buffer<uint8_t> VertexCode;
-		Buffer<uint8_t> FragmentCode;
+		Vertex = Diligent::SHADER_TYPE_VERTEX,
+		Fragment = Diligent::SHADER_TYPE_PIXEL
 	};
 
-	class Shader
+	class Shader : public Asset
 	{
 	public:
 		static Ref<Shader> Create(const SourceShaderDescription& desc);
-		static Ref<Shader> Create(const BinaryShaderDescription& desc);
 
+		void Bind();
+		void BindResources();
+		void SetUniformBuffer(ShaderStage stage, const std::string& bufferName, Ref<UniformBuffer> buffer);
+		void SetTexture(const std::string& name, Ref<Texture> texture);
+		void SetArrayTexture(const std::string& name, Ref<Texture> texture, int index);
+
+		template<typename T>
+		void SetShaderVar(const std::string& name, ShaderStage stage, T& data)
+		{
+			auto buffer = mConstantBuffers[stage];
+			Diligent::MapHelper<T> Constants(mContext.GetContext(), buffer, Diligent::MAP_WRITE, Diligent::MAP_FLAG_DISCARD);
+			*Constants = data;
+		}
 
 		void Reload();
 
 	private:
 		Shader(const SourceShaderDescription& desc);
-		Shader(const BinaryShaderDescription& desc);
 
 		WeakRef<GraphicsDevice> mDevice;
 		RenderContext mContext;
 
-		Diligent::RefCntAutoPtr<Diligent::IShader> CreateShaderFromSource(const fs::path& path);
-		Diligent::RefCntAutoPtr<Diligent::IShader> CreateShaderFromBinary(Buffer<uint8_t> code);
+		Diligent::RefCntAutoPtr<Diligent::IShader> CreateShaderFromSource(const std::string& source, Diligent::SHADER_TYPE shaderType);
 
 		Diligent::RefCntAutoPtr<Diligent::IShader> mVertexShader;
 		Diligent::RefCntAutoPtr<Diligent::IShader> mFragmentShader;
+
+		Diligent::RefCntAutoPtr<Diligent::IPipelineState> mPipeline;
+		Diligent::RefCntAutoPtr<Diligent::IShaderResourceBinding> mSRB;
+
+		std::map<ShaderStage, Diligent::RefCntAutoPtr<Diligent::IBuffer>> mConstantBuffers;
 	};
 }

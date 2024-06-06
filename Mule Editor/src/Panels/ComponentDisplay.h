@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Mule.h>
+#include "ImGuiUtil.h"
 
 static bool ValueEdit(const std::string& name, std::function<bool()> func)
 {
@@ -40,167 +41,97 @@ static bool ComponentEdit(Mule::Entity entity, const std::string& name, std::fun
 	return modified;
 }
 
-static bool DisplayCameraComponent(Mule::Entity e, Mule::CameraComponent& cameraComponent)
+template<typename T>
+static bool CollectionEdit(Mule::Entity entity, const std::string& name, T& component, bool& remove, std::function<bool(Mule::Entity, T&)> func)
 {
 	bool modified = false;
-	//
-	//auto& camera = cameraComponent.Camera;
-	//
-	//modified |= ValueEdit("FOV", [&]() {
-	//	float fov = camera.GetFOVDegrees();
-	//	if (ImGui::DragFloat("##CameraFOV", &fov, 1.f, 1.f, 270.f, "%.2f degs", ImGuiSliderFlags_AlwaysClamp))
-	//	{
-	//		camera.SetFOV(fov);
-	//		return true;
-	//	}
-	//	return false;
-	//	});
-	//
-	//modified |= ValueEdit("NearPlane", [&]() {
-	//	float near = camera.NearPlane();
-	//	if (ImGui::DragFloat("##CameraNearPlane", &near, 1.f, 0.001f, camera.FarPlane() - 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
-	//	{
-	//		camera.SetNearPlane(near);
-	//		return true;
-	//	}
-	//	return false;
-	//	});
-	//
-	//modified |= ValueEdit("Far Plane", [&]() {
-	//	float far = camera.FarPlane();
-	//	if (ImGui::DragFloat("##CameraFarPlane", &far, 1.f, camera.NearPlane() + 1.f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
-	//	{
-	//		camera.SetFarPlane(far);
-	//		return true;
-	//	}
-	//	return false;
-	//	});
-	//
-	//modified |= ValueEdit("Yaw", [&]() {
-	//	float yaw = camera.YawDegrees();
-	//	if (ImGui::DragFloat("##CameraYaw", &yaw, 1.f, 0.f, 359.99f, "%.2f degs", ImGuiSliderFlags_AlwaysClamp))
-	//	{
-	//		camera.SetYaw(yaw);
-	//		return true;
-	//	}
-	//	return false;
-	//	});
-	//
-	//modified |= ValueEdit("Pitch", [&]() {
-	//	float pitch = camera.PitchDegrees();
-	//	if (ImGui::DragFloat("##CameraPitch", &pitch, 1.f, -90.f, 90.f, "%.2f degs", ImGuiSliderFlags_AlwaysClamp))
-	//	{
-	//		camera.SetPitch(pitch);
-	//		return true;
-	//	}
-	//	return false;
-	//	});
-	//
+	bool open = ImGui::TreeNode(name.c_str());
+	if (ImGui::BeginPopupContextItem(name.c_str()))
+	{
+		if (ImGui::MenuItem("Remove"))
+		{
+			remove = true;
+		}
+		ImGui::EndPopup();
+	}
+	if (open)
+	{
+		if (ImGui::BeginTable("#componentValues", 2))
+		{
+			modified = func(entity, component);
+			ImGui::EndTable();
+		}
+		ImGui::Separator();
+		ImGui::TreePop();
+	}
+
 	return modified;
 }
 
-static bool DisplayModelComponent(Mule::Entity e, Mule::ModelComponent& model)
+static bool DisplayCameraComponent(Mule::Entity e, Mule::CameraComponent& cameraComponent)
 {
 	bool modified = false;
-	Mule::AssetManager& manager = Mule::AssetManager::Get();
 	
-	//modified |= ValueEdit("Model", [&]() {
-	//	bool modified = false;
-	//	std::string modelName = "(Empty)";
-	//	Mule::Ref<Mule::ModelDesc> modelDesc = nullptr;
-	//	if (modelDesc = manager.GetAsset<Mule::ModelDesc>(model.ModelHandle))
-	//	{
-	//		modelName = modelDesc->Name();
-	//	}
-	//	ImGui::Text(modelName.c_str());
-	//	DRAG_DROP_TARGET(DRAG_DROP_MODEL_FILE, [&](const ImGuiPayload* payload) {
-	//		std::string path = std::string((char*)payload->Data, payload->DataSize);
-	//		Mule::Ref<Mule::ModelDesc> modelAsset = manager.GetAssetByFilepath<Mule::ModelDesc>(path);
-	//		if (!modelAsset)
-	//		{
-	//			modelAsset = LoadMeshAsync(path, e);
-	//		}
-	//		model.ModelHandle = modelAsset->Handle();
-	//		model.MeshData.clear();
-	//		for (auto meshHandle : modelAsset->MeshHandles)
-	//		{
-	//			if (auto mesh = manager.GetAsset<Mule::Mesh>(meshHandle))
-	//			{
-	//				Mule::ModelComponentMesh meshData{};
-	//
-	//				meshData.MeshHandle = meshHandle;
-	//				meshData.MaterialHandle = mesh->DefaultMaterialHandle();
-	//				meshData.CastsShadows = true;
-	//				meshData.ReceiveShadows = true;
-	//				meshData.Visible = true;
-	//
-	//				model.MeshData.push_back(meshData);
-	//			}
-	//		}
-	//	});
-	//	return modified;
-	//});
-	//
-	//modified |= ValueEdit("Meshes", [&]() {
-	//	bool modified = false;
-	//	if (ImGui::TreeNode("View"))
-	//	{
-	//		for (int i = 0; i < model.MeshData.size(); i++)
-	//		{
-	//			auto& meshData = model.MeshData[i];
-	//			auto mesh = manager.GetAsset<Mule::Mesh>(meshData.MeshHandle);
-	//			std::string materialName = "(Unknown)";
-	//			if (auto material = manager.GetAsset<Mule::Material>(meshData.MaterialHandle))
-	//			{
-	//				if (mesh)
-	//				{
-	//					if (material->Handle() == mesh->DefaultMaterialHandle())
-	//						materialName = "(Mesh Default)";
-	//					else
-	//						materialName = material->Name();
-	//				}
-	//			}
-	//			std::string meshName = "(Not Loaded)";
-	//			if (mesh)
-	//			{
-	//				meshName = mesh->Name();
-	//			}
-	//			ImGui::Text("Name: %s", meshName.c_str());
-	//			ImGui::Text("Material: %s", materialName.c_str());
-	//			DRAG_DROP_TARGET(DRAG_DROP_MATERIAL_FILE, [&](const ImGuiPayload* payload) {
-	//				std::string path = PAYLOAD_TO_STR(payload);
-	//				if (auto material = manager.GetAssetByFilepath<Mule::Material>(path))
-	//				{
-	//					meshData.MaterialHandle = material->Handle();
-	//				}
-	//				else
-	//				{
-	//					auto loadedMaterial = Mule::Material::Load(path);
-	//					manager.InsertAsset(loadedMaterial);
-	//					meshData.MaterialHandle = loadedMaterial->Handle();
-	//				}
-	//				});
-	//			int vertices = 0;
-	//			int indices = 0;
-	//			if (mesh)
-	//			{
-	//				vertices = mesh->NumVertices();
-	//				indices = mesh->NumIndices();
-	//			}
-	//			ImGui::Text("Vertices: %i", vertices);
-	//			ImGui::Text("Indices: %i", indices);	
-	//			modified |= ImGui::Checkbox("Visible", &meshData.Visible);
-	//			modified |= ImGui::Checkbox("Casts Shadows", &meshData.CastsShadows);
-	//			modified |= ImGui::Checkbox("Receive Shadows", &meshData.ReceiveShadows);
-	//
-	//			if (i != model.MeshData.size() - 1)
-	//				ImGui::Separator();
-	//		}
-	//		ImGui::TreePop();
-	//	}
-	//	return modified;
-	//});
+	auto& camera = cameraComponent.Camera;
+	
+	modified |= ValueEdit("Primary", [&]() {
+		if (ImGui::Checkbox("##CameraPrimary", &cameraComponent.Primary))
+		{
+			return true;
+		}
+		return false;
+		});
 
+	modified |= ValueEdit("FOV", [&]() {
+		float fov = camera.GetFOVDegrees();
+		if (ImGui::DragFloat("##CameraFOV", &fov, 1.f, 1.f, 270.f, "%.2f degs", ImGuiSliderFlags_AlwaysClamp))
+		{
+			camera.SetFOVDegrees(fov);
+			return true;
+		}
+		return false;
+		});
+	
+	modified |= ValueEdit("Near Plane", [&]() {
+		float nearPlane = camera.GetNearPlane();
+		if (ImGui::DragFloat("##CameraNearPlane", &nearPlane, 1.f, 0.001f, camera.GetFarPlane() - 1.f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			camera.SetNearPlane(nearPlane);
+			return true;
+		}
+		return false;
+		});
+	
+	modified |= ValueEdit("Far Plane", [&]() {
+		float farPlane = camera.GetFarPlane();
+		if (ImGui::DragFloat("##CameraFarPlane", &farPlane, 1.f, camera.GetFarPlane() + 1.f, 10000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			camera.SetFarPlane(farPlane);
+			return true;
+		}
+		return false;
+		});
+
+	modified |= ValueEdit("Yaw", [&]() {
+		float yaw = camera.GetYawDegrees();
+		if (ImGui::DragFloat("##CameraYaw", &yaw, 1.f, 0.f, 360.f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			camera.SetYawDegrees(yaw);
+			return true;
+		}
+		return false;
+		});
+
+	modified |= ValueEdit("Pitch", [&]() {
+		float pitch = camera.GetPitchDegrees();
+		if (ImGui::DragFloat("##CameraPitch", &pitch, 1.f, 0.f, 360.f, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		{
+			camera.SetPitchDegrees(pitch);
+			return true;
+		}
+		return false;
+		});
+	
 	return modified;
 }
 
@@ -235,7 +166,7 @@ static bool DisplayDirectionalLightComponent(Mule::Entity e, Mule::DirectionalLi
 	bool modified = false;
 
 	modified |= ValueEdit("Visible", [&]() {
-		return ImGui::Checkbox("##DirectionalLightVisible", &directionalLight.Visible);
+		return false;//return ImGui::Checkbox("##DirectionalLightVisible", &directionalLight.Visible);
 		});
 
 	modified |= ValueEdit("Color", [&]() {
@@ -250,12 +181,54 @@ static bool DisplayDirectionalLightComponent(Mule::Entity e, Mule::DirectionalLi
 	return modified;
 }
 
+// Collections need unique ImGui ID
+static bool DisplayMeshComponent(Mule::Entity e, Mule::MeshComponent& meshComponent)
+{
+	bool modified = false;
+	Mule::AssetManager& manager = Mule::AssetManager::Get();
+	
+	modified |= ValueEdit("Visible", [&]() {
+		return ImGui::Checkbox("##MeshVisible", &meshComponent.Visible);
+		});
+
+	modified |= ValueEdit("Casts Shadows", [&]() {
+		return ImGui::Checkbox("##MeshCastShadows", &meshComponent.CastsShadows);
+		});
+
+	modified |= ValueEdit("Receive Shadows", [&]() {
+		return ImGui::Checkbox("##MeshReceiveShadows", &meshComponent.ReceiveShadows);
+		});
+
+	modified |= ValueEdit("Material", [&]() {
+		char buffer[256] = { 0 };
+		if (ImGui::InputText("##MeshMaterial", buffer, 256, ImGuiInputTextFlags_EnterReturnsTrue))
+		{
+
+		}
+		return false;
+		});
+
+	modified |= ValueEdit("Mesh", [&]() {
+		std::string meshName = "(No Mesh)";
+		auto asset = manager.GetAsset<Mule::Asset>(meshComponent.MeshHandle);
+		if (asset)
+		{
+			meshName = asset->Name();
+		}
+		ImGui::Text(meshName.c_str());
+		DragDropTarget(MESH_HANDLE_PAYLOAD, [&](Mule::AssetHandle handle) { meshComponent.MeshHandle = handle; });
+		return false;
+		});
+
+	return modified;
+}
+
 static bool DisplaySpotLightComponent(Mule::Entity e, Mule::SpotLightComponent& spotLight)
 {
 	bool modified = false;
 
 	modified |= ValueEdit("Visible", [&]() {
-		return ImGui::Checkbox("##SpotLightVisible", &spotLight.Visible);
+		return false;// ImGui::Checkbox("##SpotLightVisible", &spotLight.Visible);
 		});
 
 	modified |= ValueEdit("Color", [&]() {
@@ -264,24 +237,13 @@ static bool DisplaySpotLightComponent(Mule::Entity e, Mule::SpotLightComponent& 
 		});
 
 	modified |= ValueEdit("Angle", [&]() {
-		return ImGui::DragFloat("##SpotLightAngle", &spotLight.Theta, 1.f, 0.1f, 359.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+		return ImGui::DragFloat("##SpotLightAngle", &spotLight.Angle, 1.f, 0.1f, 359.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 		});
 
 	modified |= ValueEdit("Intensity", [&]() {
 		return ImGui::DragFloat("##SpotLightIntensity", &spotLight.Intensity, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 		});
 
-	modified |= ValueEdit("Att. Constant", [&]() {
-		return ImGui::DragFloat("##SpotLightAttConstant", &spotLight.AttenuationConstant, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		});
-
-	modified |= ValueEdit("Att. Linear", [&]() {
-		return ImGui::DragFloat("##SpotLightAttLinear", &spotLight.AttenuationLinear, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		});
-
-	modified |= ValueEdit("Att. Quadratic", [&]() {
-		return ImGui::DragFloat("##SpotLightAttQuadratic", &spotLight.AttenuationQuadratic, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		});
 
 	return modified;
 }
@@ -289,10 +251,9 @@ static bool DisplaySpotLightComponent(Mule::Entity e, Mule::SpotLightComponent& 
 static bool DisplayPointLightComponent(Mule::Entity e, Mule::PointLightComponent& pointLight)
 {
 	bool modified = false;
-
-	
+		
 	modified |= ValueEdit("Visible", [&]() {
-		return ImGui::Checkbox("##DirectionalLightVisible", &pointLight.Visible);
+		return false;// ImGui::Checkbox("##DirectionalLightVisible", &pointLight.Visible);
 		});
 
 	modified |= ValueEdit("Color", [&]() {
@@ -302,18 +263,6 @@ static bool DisplayPointLightComponent(Mule::Entity e, Mule::PointLightComponent
 
 	modified |= ValueEdit("Intensity", [&]() {
 		return ImGui::DragFloat("##PointLightIntensity", &pointLight.Intensity, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		});
-
-	modified |= ValueEdit("Att. Constant", [&]() {
-		return ImGui::DragFloat("##PointLightAttConstant", &pointLight.AttenuationConstant, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		});
-
-	modified |= ValueEdit("Att. Linear", [&]() {
-		return ImGui::DragFloat("##PointLightAttLinear", &pointLight.AttenuationLinear, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-		});
-
-	modified |= ValueEdit("Att. Quadratic", [&]() {
-		return ImGui::DragFloat("##PointLightAttQuadratic", &pointLight.AttenuationQuadratic, 1.f, 0.0f, 1000.f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
 		});
 
 	return modified;

@@ -3,6 +3,8 @@
 #include "GraphicsDevice.h"
 #include "Util/Buffer.h"
 #include "RenderContext.h"
+#include "Asset/Asset.h"
+#include <glm.hpp>
 
 namespace Mule
 {
@@ -13,9 +15,12 @@ namespace Mule
 		Buffer<uint16_t> Indices;
 		uint32_t VertexStride;
 		RenderContext Context;
+		glm::mat4 OffsetMatrix;
+		AssetHandle Handle = Asset::GenerateHandle();
+		AssetHandle DefaultMaterialHandle;
 	};
 
-	class Mesh
+	class Mesh : public Asset
 	{
 	public:
 		static Ref<Mesh> Create(WeakRef<GraphicsDevice> device, const MeshDescription& desc);
@@ -24,9 +29,15 @@ namespace Mule
 
 		void Draw(int instances = 0);
 
+		const glm::mat4& GetOffsetMatrix() const { return mOffsetMatrix; }
+
+		AssetHandle GetDefaultMaterialHandle() const { return mDefaultMaterialHandle; }
+
 	private:
 		Mesh(WeakRef<GraphicsDevice> device, const MeshDescription& desc);
 
+		AssetHandle mDefaultMaterialHandle;
+		glm::mat4 mOffsetMatrix;
 		int mNumIndices;
 		int mNumTriangles;
 		RenderContext mContext;

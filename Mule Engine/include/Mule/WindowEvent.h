@@ -145,7 +145,10 @@ namespace Mule
         Key,
         MouseMove,
         MouseButton,
-        WindowResize
+        Scroll,
+        WindowResize,
+        Char,
+        Close
     };
 
 	class WindowEvent : public Event
@@ -161,9 +164,11 @@ namespace Mule
         struct {
             int Width;
             int Height;
+            bool CloseRequested;
         } Window;
 
         struct {
+            Key Char;
             Key Key;
             bool Pressed;
         } Keyboard;
@@ -173,6 +178,8 @@ namespace Mule
             int MouseX;
             int MouseY;
             bool Pressed;
+            double ScrollXOffset;
+            double ScrollYOffset;
         } Mouse;
 	};
 }

@@ -6,9 +6,9 @@
 class SceneHierarchyPanel : public Panel
 {
 public:
-	SceneHierarchyPanel(Mule::Ref<ApplicationData> appData)
+	SceneHierarchyPanel(Mule::Ref<EditorState> editorState)
 		:
-		Panel("Scene Hierarchy Panel", appData)
+		Panel("Scene Hierarchy Panel", editorState)
 	{}
 
 	virtual void OnAttach() override;

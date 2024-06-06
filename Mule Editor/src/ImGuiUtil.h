@@ -1,3 +1,4 @@
+
 #pragma once
 
 #include <imgui.h>
@@ -5,71 +6,40 @@
 #include <gtx/quaternion.hpp>
 
 #include <string>
+#include <filesystem>
+
+#include <Mule.h>
+
+namespace fs = std::filesystem;
+
+constexpr const char* SCENE_HANDLE_PAYLOAD = "Scene-Handle";
+constexpr const char* SCENE_PATH_PAYLOAD = "Scene-Path";
+constexpr const char* MESH_HANDLE_PAYLOAD = "Mesh-Handle";
+constexpr const char* MODEL_HANDLE_PAYLOAD = "Model-Handle";
+constexpr const char* MODEL_PATH_PAYLOAD = "Model-Path";
+
+constexpr const char* ENTITY_ID_PAYLOAD = "Entity-ID";
 
 #define VEC3_INPUT_WIDTH 80.f
 
-static void Vec3Display(const std::string& name, glm::vec3& vec, const glm::vec3& reset = { 0.f, 0.f, 0.f })
+bool Vec3Display(const std::string& name, glm::vec3& vec, const glm::vec3& reset = { 0.f, 0.f, 0.f });
+
+void DragDropTarget(const std::string& type, std::function<void(const ImGuiPayload*)> func);
+void DragDropTarget(const std::string& type, std::function<void(const fs::path&)> func);
+void DragDropTarget(const std::string& type, std::function<void(Mule::AssetHandle)> func);
+
+void DragDropSource(const std::string& type, void* data, int size);
+void DragDropSource(const std::string& type, const std::string& str);
+void DragDropSource(const std::string& type, const fs::path& path);
+
+void DragDropModelToEntity(Mule::Entity e);
+
+std::string StrFromPayload(const ImGuiPayload* payload);
+fs::path PathFromPayload(const ImGuiPayload* payload);
+
+template<typename T>
+T TypeFromPayload(const ImGuiPayload* payload)
 {
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.f, 0.f });
-
-	// X
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.f, 0.f, 0.f, 1.f));
-	if (ImGui::Button(("X##" + name).c_str())) vec.x = reset.x;
-	ImGui::SameLine();
-	ImGui::PushItemWidth(VEC3_INPUT_WIDTH);
-	ImGui::DragFloat(("##" + name + "X").c_str(), &vec.x);
-	ImGui::SameLine();
-
-	// Y
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 1.f, 0.f, 1.f));
-	if (ImGui::Button(("Y##" + name).c_str())) vec.y = reset.y;
-	ImGui::SameLine();
-	ImGui::PushItemWidth(VEC3_INPUT_WIDTH);
-	ImGui::DragFloat(("##" + name + "Y").c_str(), &vec.y);
-	ImGui::SameLine();
-
-	// Z
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 1.f, 1.f));
-	if (ImGui::Button(("Z##" + name).c_str())) vec.z = reset.z;
-	ImGui::SameLine();
-	ImGui::PushItemWidth(VEC3_INPUT_WIDTH);
-	ImGui::DragFloat(("##" + name + "Z").c_str(), &vec.z);
-
-	ImGui::PopStyleColor(3);
-	ImGui::PopStyleVar();
-}
-
-static void Vec3DisplayDegrees(const std::string& name, glm::quat& quat)
-{
-	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.f, 0.f });
-
-	glm::vec3 euler = glm::degrees(glm::eulerAngles(quat));
-
-	// X
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.f, 0.f, 0.f, 1.f));
-	if (ImGui::Button(("X##" + name).c_str())) euler.x = 0.f;
-	ImGui::SameLine();
-	ImGui::PushItemWidth(VEC3_INPUT_WIDTH);
-	ImGui::DragFloat(("##" + name + "X").c_str(), &euler.x);
-	ImGui::SameLine();
-
-	// Y
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 1.f, 0.f, 1.f));
-	if (ImGui::Button(("Y##" + name).c_str())) euler.y = 0.f;
-	ImGui::SameLine();
-	ImGui::PushItemWidth(VEC3_INPUT_WIDTH);
-	ImGui::DragFloat(("##" + name + "Y").c_str(), &euler.y);
-	ImGui::SameLine();
-
-	// Z
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 1.f, 1.f));
-	if (ImGui::Button(("Z##" + name).c_str())) euler.z = 0.f;
-	ImGui::SameLine();
-	ImGui::PushItemWidth(VEC3_INPUT_WIDTH);
-	ImGui::DragFloat(("##" + name + "Z").c_str(), &euler.z);
-
-	ImGui::PopStyleColor(3);
-	ImGui::PopStyleVar();
-
-	quat = glm::quat(glm::radians(euler));
+	T data = *(T*)payload->Data;
+	return data;
 }

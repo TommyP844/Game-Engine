@@ -36,7 +36,7 @@ namespace Mule
 		Guid Guid();
 
 		Entity Parent();
-		const std::vector<Entity>& Children();
+		std::vector<Entity> Children();
 		void Orphan();
 		void RemoveChild(Entity child);
 		void AddChild(Entity child);
@@ -49,6 +49,7 @@ namespace Mule
 		template<typename T, typename ...Args>
 		T& AddComponent(Args&&... args)
 		{
+			mScene->SetModified();
 			return mScene->AddComponent<T>(mId, std::forward<Args>(args)...);
 		}
 
@@ -67,10 +68,16 @@ namespace Mule
 		template<typename T>
 		void RemoveComponent()
 		{
+			mScene->SetModified();
 			mScene->RemoveComponent<T>(mId);
 		}
 
 		bool operator==(const Entity& other)
+		{
+			return mId == other.mId && mScene == other.mScene;
+		}
+
+		bool operator==(const Entity& other) const
 		{
 			return mId == other.mId && mScene == other.mScene;
 		}

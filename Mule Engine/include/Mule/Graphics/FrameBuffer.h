@@ -42,7 +42,11 @@ namespace Mule
 		Diligent::IFramebuffer* GetFrameBuffer() const { return mFrameBuffer; }
 		std::vector<Diligent::OptimizedClearValue> ClearValues() const { return mTextureClearValues; }
 		std::vector<Diligent::ITextureView*> AttachmentViews() const { return mAttachmentViews; }
+		Diligent::ITextureView* GetAttachmentView(int index) const { return mAttachmentViews[index]; }
+		ImTextureID GetAttachmentViewImGui(int index);
 		Diligent::ITextureView* DepthAttachmentView() const { return mDepthView; }
+
+		uint32_t GetNumAttachments() const { return mAttachmentViews.size(); }
 
 		~FrameBuffer();
 	private:
@@ -59,13 +63,11 @@ namespace Mule
 		FrameBufferDescription mFrameBufferDesc;
 
 		Diligent::RefCntAutoPtr<Diligent::IFramebuffer> mFrameBuffer;
-		
 		std::vector<Diligent::ITextureView*> mAttachmentViews;
+		std::vector<Ref<Texture>> mAttachmentTextures;
+		std::vector<Diligent::OptimizedClearValue> mTextureClearValues;
+		Ref<Texture> mDepthAttachment;
 		Diligent::ITextureView* mDepthView;
 
-		std::vector<Ref<Texture>> mAttachmentTextures;
-		Ref<Texture> mDepthAttachment;
-
-		std::vector<Diligent::OptimizedClearValue> mTextureClearValues;
 	};
 }

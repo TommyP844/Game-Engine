@@ -1,18 +1,18 @@
 #pragma once
 
 #include "Mule.h"
-#include "ApplicationData.h"
+#include "EditorState.h"
 
 class EditorLayer;
 
 class Panel
 {
 public:
-	Panel(const std::string& name, Mule::Ref<ApplicationData> appData)
+	Panel(const std::string& name, Mule::WeakRef<EditorState> editorState)
 		:
 		mName(name),
 		mIsOpen(true),
-		mAppData(appData)
+		mEditorState(editorState)
 	{}
 	~Panel(){}
 
@@ -23,10 +23,13 @@ public:
 	virtual void OnEvent(Mule::Ref<Mule::Event> event) = 0;
 
 	const std::string& Name() const { return mName; }
+	bool IsOpen() const { return mIsOpen; }
+	void SetOpen(bool open) { mIsOpen = true; }
+	void ToggleOpen() { mIsOpen = !mIsOpen; }
 
 protected:
 	bool mIsOpen;
-	Mule::Ref<ApplicationData> mAppData;
+	Mule::WeakRef<EditorState> mEditorState;
 private:
 	std::string mName;
 };

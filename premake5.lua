@@ -1,5 +1,3 @@
-include "util.lua"
-
 workspace "Mule"
     configurations { "Debug", "Release" }
 	architecture "x64"
@@ -13,7 +11,10 @@ workspace "Mule"
         dir .. "/SubModules/glfw/include",
         dir .. "/SubModules/DiligentEngine/install/include",
         dir .. "/SubModules/DiligentEngine/DiligentTools/ThirdParty/imgui",
-        os.getenv("VULKAN_SDK") .. "/include"
+        os.getenv("VULKAN_SDK") .. "/include",
+        dir .. "/SubModules/stb",
+        dir .. "/SubModules/tinyfd",
+        dir .. "/SubModules/gltf"
     }
 
     debugLibs = {
@@ -44,4 +45,5 @@ workspace "Mule"
     group "SubModules"
         include "SubModules/yaml-cpp/yaml.lua"
         include "SubModules/glfw/premake5.lua"
+        include "SubModules/tinyfd/tinyfd.lua"
     group ""

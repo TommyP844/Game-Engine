@@ -4,15 +4,6 @@
 
 Application::Application(const std::string& name)
 {
-}
-
-Application::~Application()
-{
-	Mule::Window::Shutdown();
-}
-
-void Application::Setup()
-{
 	const int WIDTH = 1600;
 	const int HEIGHT = 900;
 
@@ -32,27 +23,44 @@ void Application::Setup()
 
 	mImGuiContext = Mule::ImGuiMuleContext::Create(imGuiInfo);
 
+	mApplicationData = Mule::Ref<ApplicationData>::Make();
+	mApplicationData->GraphicsDevice = mGraphicsDevice;
+
+	Mule::AssetManager::Initialize();
+}
+
+Application::~Application()
+{
+	while (!mLayers.empty())
+	{
+		auto layer = mLayers.top();
+		layer->OnDetach();
+		mLayers.pop();
+	}
+
+	Mule::AssetManager::Shutdown();
+	Mule::Window::Shutdown();
 }
 
 void Application::Run()
 {
-	while (!mWindow->ShouldClose() && mAppIsRunning)
+	while (mApplicationData->IsAppRunning())
 	{
 		std::vector<Mule::Ref<Mule::WindowEvent>> events = mWindow->PollEvents();
-
-		for (auto event : events)
-		{
-			mImGuiContext->AddEvent(event);
-		}
 
 		if (!mLayers.empty())
 		{
 			auto layer = mLayers.top();
+			for (auto event : events)
+			{
+				mImGuiContext->AddEvent(event);
+				layer->OnEvent(event);
+			}
 			layer->OnUpdate();
 			mImGuiContext->BeginFrame();
 			layer->OnImGuiRender();
 			mImGuiContext->Render();
-		}
+		}		
 
 		mGraphicsDevice->SwapBuffers();
 	}
@@ -68,7 +76,7 @@ void Application::PopLayer()
 {
 	if (mLayers.empty())
 	{
-		MULE_LOG_ERROR("Failed to pop layer, layer stack empty");
+		MULE_LOG_ERROR("Failed to pop layer, layer stack empty", "");
 	}
 
 	auto layer = mLayers.top();

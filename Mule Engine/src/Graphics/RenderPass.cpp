@@ -15,7 +15,14 @@ namespace Mule
 
 	void RenderPass::Begin(WeakRef<FrameBuffer> framebuffer)
 	{
-		mContext.GetContext()->SetRenderTargets(framebuffer->AttachmentViews().size(), framebuffer->AttachmentViews().data(), framebuffer->DepthAttachmentView(), Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		auto viewCount = framebuffer->AttachmentViews().size();
+		auto views = framebuffer->AttachmentViews();
+		mContext.GetContext()->SetRenderTargets(viewCount, views.data(), framebuffer->DepthAttachmentView(), Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		for (int i = 0; i < viewCount - 1; i++)
+		{
+			glm::vec4 clearValue = { 1.f, 0.f, 0.f, 1.f };
+			mContext.GetContext()->ClearRenderTarget(views[i], &clearValue[0], Diligent::RESOURCE_STATE_TRANSITION_MODE_TRANSITION);
+		}
 
 		Diligent::BeginRenderPassAttribs attribs{};
 
@@ -62,7 +69,8 @@ namespace Mule
 	
 	RenderPass::RenderPass(WeakRef<GraphicsDevice> device, const RenderPassDescription& desc)
 		:
-		mContext(desc.Context)
+		mContext(desc.Context),
+		Asset(Asset::GenerateHandle(), "", AssetType::RenderPass)
 	{
 		auto diligentDevice = device->GetRenderDevice();
 

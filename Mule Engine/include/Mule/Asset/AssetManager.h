@@ -9,6 +9,7 @@
 #include <random>
 #include <thread>
 #include <mutex>
+#include <functional>
 
 namespace Mule
 {
@@ -41,13 +42,16 @@ namespace Mule
 			std::lock_guard<std::mutex> lock(mMutex);
 			for (auto& [handle, asset] : mAssets)
 			{
-				if (path == asset->Filepath())
+				auto assetPath = asset->Filepath();
+				if (path == assetPath)
 					return asset;
 			}
 			return nullptr;
 		}
 
 		const std::map<AssetHandle, Ref<Asset>>& GetAllAssets() const { return mAssets; }
+
+		void IterateAssets(std::function<void(WeakRef<Asset>)> func);
 
 		AssetManager();
 		virtual ~AssetManager();

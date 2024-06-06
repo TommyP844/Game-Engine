@@ -1,14 +1,15 @@
 #pragma once
 
 #include "Panel.h"
-#include <thread>
 
-class ComponentPanel : public Panel
+#include "Mule.h"
+
+class SceneView : public Panel
 {
 public:
-	ComponentPanel(Mule::Ref<EditorState> editorState)
+	SceneView(Mule::Ref<EditorState> editorState)
 		:
-		Panel("Component Panel", editorState)
+		Panel("Scene View", editorState)
 	{}
 
 	virtual void OnAttach() override;
@@ -18,6 +19,8 @@ public:
 	virtual void OnImGuiRender() override;
 
 private:
-	std::thread mLoadModelThread;
+	Mule::Ref<Mule::SceneRenderer> mRenderer;
+	float mWidth, mHeight;
+	bool mResizeRequired = false;
 };
 

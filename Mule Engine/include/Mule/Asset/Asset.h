@@ -30,25 +30,24 @@ namespace Mule
 
 	typedef size_t AssetHandle;
 
+	constexpr AssetHandle DefaultShaderHandle = 1;
+	constexpr AssetHandle DefaultRenderPassHandle = 2;
+
 	class Asset
 	{
 	public:
-		static const AssetHandle NullHandle = 0;
+		static const AssetHandle NullHandle = 0ull;
 
 		Asset(AssetHandle handle, const std::string& name, const fs::path& directory, AssetType type)
 			:
 			mHandle(handle),
-			mFileName(name),
+			mName(name),
 			mDirectory(directory),
 			mType(type),
 			mAssetVersion(0)
 		{
-			if (fs::exists(mDirectory))
-			{
-				mName = directory.filename().replace_extension().string();
-				mFileName = directory.filename().string();
-				mAssetVersion = 0ull;
-			}
+			mFileName = directory.filename().string();
+			mAssetVersion = 0ull;
 		}
 
 		Asset(AssetHandle handle, const fs::path& filepath, AssetType type)
@@ -57,11 +56,11 @@ namespace Mule
 			mType(type),
 			mAssetVersion(0)
 		{
-			if (fs::exists(mDirectory))
+			mDirectory = filepath.parent_path();
+			mFileName = filepath.filename().string();
+			mName = filepath.filename().replace_extension().string();
+			if (fs::exists(filepath))
 			{
-				mDirectory = filepath.parent_path();
-				mFileName = filepath.filename().string();
-				mName = filepath.filename().replace_extension().string();
 				mAssetVersion = fs::last_write_time(mDirectory).time_since_epoch().count();
 			}
 		}
@@ -103,7 +102,7 @@ namespace Mule
 
 			AssetHandle handle = dis(gen);
 
-			if (handle == NullHandle)
+			if (handle == NullHandle || handle <= sReserved)
 				return GenerateHandle();
 
 			return handle;
@@ -113,6 +112,8 @@ namespace Mule
 		// for async loading
 		std::atomic<bool> mLoaded;
 	private:
+		static const AssetHandle sReserved = 1000ull;
+
 		AssetHandle mHandle;
 		std::string mName;
 		std::string mFileName;

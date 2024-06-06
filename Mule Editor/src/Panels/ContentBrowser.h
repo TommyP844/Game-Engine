@@ -5,12 +5,15 @@
 #include "Util.h"
 #include <set>
 
+#include <thread>
+#include <atomic>
+
 class ContentBrowser : public Panel
 {
 public:
-	ContentBrowser(Mule::Ref<ApplicationData> appData)
+	ContentBrowser(Mule::Ref<EditorState> editorState)
 		:
-		Panel("Content Browser", appData)
+		Panel("Content Browser", editorState)
 	{}
 
 	virtual void OnAttach() override;
@@ -20,6 +23,7 @@ public:
 	virtual void OnImGuiRender() override;
 
 private:
+
 	fs::path mAssetPath;
 	fs::path mBrowserDirectory;
 

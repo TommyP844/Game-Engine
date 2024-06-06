@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Asset/Asset.h"
 #include "GraphicsDevice.h"
 #include "GraphicsTypes.h"
 #include "DiligentCore/Graphics/GraphicsEngine/interface/GraphicsTypes.h"
@@ -42,7 +43,15 @@ namespace Mule
 		Samples SampleCount = Samples::SampleCount_1;
 		TextureFlags Flags;
 		TextureType Type;
+		void* Data = nullptr;
 		bool CreateImGuiTexture;
+
+		// Only fill out path for textures loaded from path
+		fs::path FilePath;
+
+		// Only fill out Handle if it exists in the mapping
+		// otherwise it will be auto generated
+		AssetHandle Handle = Asset::NullHandle;
 	};
 
 	struct TextureReadInfo
@@ -53,10 +62,11 @@ namespace Mule
 		uint32_t Layer;
 	};
 
-	class Texture
+	class Texture : public Asset
 	{
 	public:
-		static Ref<Texture> Create(WeakRef<GraphicsDevice> device, const TextureDescription& desc);
+		static Ref<Texture> Create(WeakRef<GraphicsDevice> device, RenderContext context, const TextureDescription& desc);
+		static Ref<Texture> Create(WeakRef<GraphicsDevice> device, RenderContext context, const fs::path& path);
 
 		uint32_t GetWidth() const { return mWidth; }
 		uint32_t GetHeight() const { return mHeight; }
@@ -83,7 +93,7 @@ namespace Mule
 		~Texture();
 
 	private:
-		Texture(WeakRef<GraphicsDevice> device, const TextureDescription& desc);
+		Texture(WeakRef<GraphicsDevice> device, RenderContext context, const TextureDescription& desc);
 
 		std::string mName;
 		uint32_t mWidth;

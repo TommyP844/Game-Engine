@@ -7,7 +7,7 @@
 class ILayer
 {
 public:
-	ILayer(Mule::Ref<ApplicationData> appData, const std::string& name) : mName(name) {}
+	ILayer(Mule::WeakRef<ApplicationData> appData, const std::string& name) : mName(name), mApplicationData(appData) {}
 	virtual ~ILayer(){}
 
 	virtual void OnAttach() = 0;
@@ -19,7 +19,7 @@ public:
 	const std::string& GetName() const { return mName; }
 
 protected:
-	Mule::Ref<ApplicationData> mApplicationData;
+	Mule::WeakRef<ApplicationData> mApplicationData;
 private:
 	std::string mName;
 };

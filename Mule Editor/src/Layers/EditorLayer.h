@@ -3,6 +3,8 @@
 #include "Mule.h"
 #include "Panels/Panel.h"
 #include "ILayer.h"
+#include "EditorState.h"
+#include "Popups/NewAssetPopup.h"
 
 #include <map>
 #include <set>
@@ -19,14 +21,17 @@ enum class PanelType : int
 	RenderSettingsPanel
 };
 
+enum class PopupType : int
+{
+	None,
+	NewScene,
+	NewMaterial
+};
+
 class EditorLayer : public ILayer
 {
 public:
-	EditorLayer(const fs::path& projectPath)
-		:
-		mProjectPath(projectPath),
-		ILayer(nullptr, "Editor Layer")
-	{}
+	EditorLayer(const fs::path& projectPath, Mule::WeakRef<ApplicationData> appData);
 
 	virtual void OnAttach() override;
 	virtual void OnUpdate(float dt) override;
@@ -46,14 +51,23 @@ public:
 
 private:
 	std::map<PanelType, Mule::Ref<Panel>> mPanels;
-	std::map<PanelType, bool> mOpenPanels;
+	std::pair<PopupType, Mule::Ref<NewAssetPopUp>> mNewAssetPopup;
+
 	std::set<PanelType> mPanelsToPop;
+	Mule::Ref<EditorState> mEditorState;
+	Mule::WeakRef<ApplicationData> mAppData;
 
 	void DisplayMenuBar();
 	void DisplayPopups();
 
 	char mInputBuffer[256] = { 0 };
 
-	fs::path mProjectPath;
+	// Popup data
+	bool mAppCloseRequested;
+
+	std::atomic<bool> mLayerAttached = true;
+	std::atomic<bool> mAutoLoadAssets = true;
+	std::thread mAssetScanner;
+	void LoadAssetsAsync();
 
 };

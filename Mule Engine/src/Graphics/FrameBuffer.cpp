@@ -9,9 +9,17 @@ namespace Mule
 
 	void FrameBuffer::Resize(int width, int height)
 	{
+		mAttachmentViews.clear();
+		mAttachmentTextures.clear();
+		mTextureClearValues.clear();
 		mFrameBufferDesc.Width = width;
 		mFrameBufferDesc.Height = height;
 		Init(mDevice, mFrameBufferDesc);
+	}
+
+	ImTextureID FrameBuffer::GetAttachmentViewImGui(int index)
+	{
+		return mAttachmentTextures[index]->GetImGuiID();
 	}
 
 	FrameBuffer::~FrameBuffer()
@@ -62,7 +70,7 @@ namespace Mule
 				textureDesc.Name = desc.Name + " - Attachment " + std::to_string(i);
 				textureDesc.Flags = (TextureFlags)(TextureFlags::RenderTarget | desc.Attachments[i].Flags);
 
-				auto attachment = Texture::Create(device, textureDesc);
+				auto attachment = Texture::Create(device, desc.Context, textureDesc);
 				mAttachmentTextures.push_back(attachment);
 				mAttachmentViews.push_back(attachment->GetRenderTargetView());
 
@@ -100,7 +108,9 @@ namespace Mule
 		frameBufferDesc.ppAttachments = renderTargetViews.data();
 		frameBufferDesc.pRenderPass = desc.RenderPass->GetRenderPass();
 
-		diligentDevice->CreateFramebuffer(frameBufferDesc, &mFrameBuffer);
+		Diligent::RefCntAutoPtr<Diligent::IFramebuffer> framebuffer;
+		diligentDevice->CreateFramebuffer(frameBufferDesc, &framebuffer);
+		mFrameBuffer = framebuffer;
 	}
 	
 }

@@ -33,7 +33,10 @@ namespace Mule
 
 	Mesh::Mesh(WeakRef<GraphicsDevice> device, const MeshDescription& desc)
 		:
-		mContext(desc.Context)
+		mContext(desc.Context),
+		mOffsetMatrix(desc.OffsetMatrix),
+		mDefaultMaterialHandle(desc.DefaultMaterialHandle),
+		Asset(desc.Handle, desc.Name, "", AssetType::Mesh)
 	{
 		auto diligentDevice = device->GetRenderDevice();
 
@@ -49,32 +52,34 @@ namespace Mule
 		bufferDesc.ImmediateContextMask = desc.Context.GetContextMask();
 
 		Diligent::BufferData data;
-		data.DataSize = desc.Vertices.TypeSize * desc.Vertices.Count();
+		data.DataSize = desc.VertexStride * desc.Vertices.Count();
 		data.pData = desc.Vertices.Data();
 		data.pContext = desc.Context.GetContext();
 
 		diligentDevice->CreateBuffer(bufferDesc, &data, &mVertexBuffer);
 
+		if (desc.Indices.Count() > 0)
+		{
+			Diligent::BufferDesc indexBufferDesc{};
+			indexBufferDesc.Size = desc.Indices.TypeSize * desc.Indices.Count();
+			indexBufferDesc.CPUAccessFlags = Diligent::CPU_ACCESS_NONE;
+			indexBufferDesc.ElementByteStride = desc.VertexStride;
+			indexBufferDesc.Usage = Diligent::USAGE::USAGE_IMMUTABLE;
+			indexBufferDesc.Name = desc.Name.c_str();
+			indexBufferDesc.BindFlags = Diligent::BIND_FLAGS::BIND_INDEX_BUFFER;
+			indexBufferDesc.Mode = Diligent::BUFFER_MODE_RAW;
+			indexBufferDesc.MiscFlags = Diligent::MISC_BUFFER_FLAGS::MISC_BUFFER_FLAG_NONE;
+			indexBufferDesc.ImmediateContextMask = desc.Context.GetContextMask();
 
-		Diligent::BufferDesc indexBufferDesc{};
-		indexBufferDesc.Size = desc.Indices.TypeSize * desc.Indices.Count();
-		indexBufferDesc.CPUAccessFlags = Diligent::CPU_ACCESS_NONE;
-		indexBufferDesc.ElementByteStride = desc.VertexStride;
-		indexBufferDesc.Usage = Diligent::USAGE::USAGE_IMMUTABLE;
-		indexBufferDesc.Name = desc.Name.c_str();
-		indexBufferDesc.BindFlags = Diligent::BIND_FLAGS::BIND_INDEX_BUFFER;
-		indexBufferDesc.Mode = Diligent::BUFFER_MODE_RAW;
-		indexBufferDesc.MiscFlags = Diligent::MISC_BUFFER_FLAGS::MISC_BUFFER_FLAG_NONE;
-		indexBufferDesc.ImmediateContextMask = desc.Context.GetContextMask();
+			mNumIndices = desc.Indices.Count();
+			mNumTriangles = mNumIndices / 3;
 
-		mNumIndices = desc.Indices.Count();
-		mNumTriangles = mNumIndices / 3;
+			Diligent::BufferData indexBufferData;
+			indexBufferData.DataSize = desc.Indices.TypeSize * desc.Indices.Count();
+			indexBufferData.pData = desc.Indices.Data();
+			indexBufferData.pContext = desc.Context.GetContext();
 
-		Diligent::BufferData indexBufferData;
-		data.DataSize = desc.Indices.TypeSize * desc.Indices.Count();
-		data.pData = desc.Indices.Data();
-		data.pContext = desc.Context.GetContext();
-
-		diligentDevice->CreateBuffer(indexBufferDesc, &indexBufferData, &mVertexBuffer);
+			diligentDevice->CreateBuffer(indexBufferDesc, &indexBufferData, &mIndexBuffer);
+		}
 	}
 }

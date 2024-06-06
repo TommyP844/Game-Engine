@@ -30,7 +30,7 @@ namespace Mule
 
 	std::vector<Ref<Asset>> AssetManager::GetAllAssetsOfType(AssetType type)
 	{
-		std::lock_guard<std::mutex> lock(mMutex);
+		//std::lock_guard<std::mutex> lock(mMutex);
 
 		std::vector<Ref<Asset>> assets;
 		for (auto& [handle, asset] : mAssets)
@@ -60,7 +60,19 @@ namespace Mule
 		return false;
 	}
 
+	void AssetManager::IterateAssets(std::function<void(WeakRef<Asset>)> func)
+	{
+		std::lock_guard<std::mutex> lock(mMutex);
+
+		for (auto& [handle, asset] : mAssets)
+		{
+			func(asset);
+		}
+	}
+
 	AssetManager::AssetManager()
+		:
+		mAssets({})
 	{
 		
 	}

@@ -4,7 +4,6 @@
 #include "Mule Assert.h"
 #include "Serialization/yaml.h"
 #include "Asset/AssetManager.h"
-
 #include <entt/entt.hpp>
 
 #include <fstream>
@@ -21,6 +20,7 @@ namespace Mule
 		:
 		Asset(Asset::GenerateHandle(), directory, AssetType::Scene)
 	{
+		SetModified();
 	}
 
 	void Scene::Serialize(SerializationMode mode)
@@ -52,6 +52,7 @@ namespace Mule
 			MULE_LOG_ERROR("Failed to deserialize scene: {0}, with mode: {1}", filepath, (int)mode);
 			break;
 		}
+		scene->ClearModified();// a bit hacky but scenes constructor sets modified to true
 		return scene;
 	}
 	
@@ -73,10 +74,9 @@ namespace Mule
 	{
 		entt::entity entityId = mRegistry.create(id);
 
-		AddComponent<TagComponent>(entityId).Tag = tag;
-		AddComponent<GuidComponent>(entityId).Guid = guid;
-		AddComponent<RelationshipComponent>(entityId);
-		AddComponent<TransformComponent>(entityId);
+		auto& meta = AddComponent<MetaComponent>(entityId);
+		meta.Tag = tag;
+		meta.Guid = guid;
 
 		return Entity(entityId, WeakRef<Scene>(this));
 	}
@@ -86,11 +86,10 @@ namespace Mule
 		SetModified();
 
 		entt::entity id = mRegistry.create();
-
-		AddComponent<TagComponent>(id, tag);
-		AddComponent<GuidComponent>(id);
-		AddComponent<RelationshipComponent>(id);
-		AddComponent<TransformComponent>(id);
+		auto& meta = AddComponent<MetaComponent>(id);
+		meta.Tag = tag;
+		meta.Guid = guid;
+		auto& v = AddComponent<RootComponent>(id);
 
 		return Entity(id, WeakRef<Scene>(this));
 	}
@@ -107,7 +106,7 @@ namespace Mule
 
 	void Scene::IterateEntities(std::function<void(Entity)> func)
 	{
-		auto view = mRegistry.view<TagComponent>();
+		auto view = mRegistry.view<MetaComponent>();
 			
 		for(auto id : view) 
 		{
@@ -117,7 +116,7 @@ namespace Mule
 
 	void Scene::IterateParentEntities(std::function<void(Entity)> func)
 	{
-		auto view = mRegistry.view<TagComponent>();
+		auto view = mRegistry.view<RootComponent>();
 
 		for(auto id : view)
 		{
@@ -136,11 +135,6 @@ namespace Mule
 
 	void Scene::OnUpdate(float dt)
 	{
-	}
-
-	void Scene::OnRender(float dt)
-	{
-		
 	}
 
 	void Scene::SerializeText()
@@ -201,7 +195,12 @@ namespace Mule
 		Transform transform = node["Transform"].as<Transform>();
 
 		Entity e = scene->LoadEntity((entt::entity)id, tag, guid);
-		e.GetComponent<TransformComponent>().Transform = transform;
+		e.GetComponent<MetaComponent>().Transform = transform;
+
+		if (!parent)
+		{
+			e.AddComponent<RootComponent>();
+		}
 
 		if (parent)
 		{
@@ -213,7 +212,7 @@ namespace Mule
 			for (auto componentNode : node["Components"])
 			{
 				DESERIALIZE_COMPONENT(CameraComponent);
-				DESERIALIZE_COMPONENT(ModelComponent);
+				//DESERIALIZE_COMPONENT(ModelComponent);
 				DESERIALIZE_COMPONENT(PointLightComponent);
 				DESERIALIZE_COMPONENT(SpotLightComponent);
 				DESERIALIZE_COMPONENT(DirectionalLightComponent);
@@ -245,7 +244,7 @@ namespace Mule
 
 #define SERIALIZE_COMPONENT(type) if (e.HasComponent<type>()) entity["Components"].push_back(e.GetComponent<type>());
 	
-		SERIALIZE_COMPONENT(ModelComponent);
+		//SERIALIZE_COMPONENT(ModelComponent);
 		SERIALIZE_COMPONENT(CameraComponent);
 		SERIALIZE_COMPONENT(PointLightComponent);
 		SERIALIZE_COMPONENT(SpotLightComponent);

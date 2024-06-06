@@ -13,3 +13,15 @@
 [submodule "SubModules/glfw"]
 	path = SubModules/glfw
 	url = https://github.com/TommyP844/glfw
+[submodule "SuModules/stb"]
+	path = SuModules/stb
+	url = https://github.com/nothings/stb
+[submodule "SubModules/stb"]
+	path = SubModules/stb
+	url = https://github.com/nothings/stb
+[submodule "SubModules/tinyfd"]
+	path = SubModules/tinyfd
+	url = https://github.com/native-toolkit/libtinyfiledialogs
+[submodule "SubModules/gltf"]
+	path = SubModules/gltf
+	url = https://github.com/syoyo/tinygltf

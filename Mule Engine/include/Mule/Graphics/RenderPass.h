@@ -3,6 +3,7 @@
 #include "GraphicsDevice.h"
 #include "GraphicsTypes.h"
 #include "RenderContext.h"
+#include "Asset/Asset.h"
 
 #include "DiligentCore/Graphics/GraphicsEngine/interface/RenderPass.h"
 
@@ -11,6 +12,15 @@ namespace Mule
 
 	struct RenderPassSubPassDescription
 	{
+		RenderPassSubPassDescription(
+			const std::initializer_list<uint32_t>& inputAttachments, 
+			const std::initializer_list<uint32_t>& outputAttachments, 
+			bool renderToDepth)
+			:
+			InputAttachments(inputAttachments),
+			OutputAttachments(outputAttachments),
+			RenderToDepth(renderToDepth)
+		{}
 		std::vector<uint32_t> InputAttachments;
 		std::vector<uint32_t> OutputAttachments;
 		bool RenderToDepth;
@@ -18,12 +28,20 @@ namespace Mule
 
 	struct RenderPassAttachment
 	{
+		RenderPassAttachment() = default;
+		RenderPassAttachment(TextureFormat format, Samples samples)
+			:
+			Format(format),
+			SampleCount(samples)
+		{}
+
 		TextureFormat Format;
 		Samples SampleCount;
 	};
 
 	struct RenderPassDescription
 	{
+		RenderPassDescription() = default;
 		std::string Name;
 		std::vector<RenderPassAttachment> Attachments;
 		RenderPassAttachment DepthAttachment;
@@ -33,7 +51,7 @@ namespace Mule
 
 	class FrameBuffer;
 
-	class RenderPass
+	class RenderPass : public Asset
 	{
 	public:
 		static Ref<RenderPass> Create(WeakRef<GraphicsDevice> device, const RenderPassDescription& desc);

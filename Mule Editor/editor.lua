@@ -13,7 +13,8 @@ project "Mule Editor"
 	{
 		"GLM_FORCE_INTRINSICS",
 		"GLM_ENABLE_EXPERIMENTAL",
-		"YAML_CPP_STATIC_DEFINE"
+		"YAML_CPP_STATIC_DEFINE",
+		"NOMINMAX"
 	}
 
 	includedirs 
@@ -31,7 +32,8 @@ project "Mule Editor"
 		"Application",
 		"Mule Engine",
 		"glfw",
-		"yaml-cpp"
+		"yaml-cpp",
+		"tinyfd"
 	}
 
 	files

@@ -2,8 +2,10 @@
 #include "Log.h"
 
 #include "DiligentTools/Imgui/interface/ImGuiDiligentRenderer.hpp"
-
 #include <math.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 #ifdef max
 #undef max
@@ -11,12 +13,36 @@
 
 namespace Mule
 {
-	Ref<Texture> Texture::Create(WeakRef<GraphicsDevice> device, const TextureDescription& desc)
+	Ref<Texture> Texture::Create(WeakRef<GraphicsDevice> device, RenderContext context, const TextureDescription& desc)
 	{
-		return Ref<Texture>(new Texture(device, desc));
+		return Ref<Texture>(new Texture(device, context, desc));
 	}
 
-	Texture::Texture(WeakRef<GraphicsDevice> device, const TextureDescription& desc)
+	Ref<Texture> Texture::Create(WeakRef<GraphicsDevice> device, RenderContext context, const fs::path& path)
+	{
+		int x, y, channels;
+		unsigned char* pixels = stbi_load(path.string().c_str(), &x, &y, &channels, STBI_rgb_alpha);
+		
+		unsigned char v = pixels[3];
+
+		TextureDescription desc{};
+		desc.CreateImGuiTexture = true;
+		desc.Width = x;
+		desc.Height = y;
+		desc.Depth = 1;
+		desc.Type = TextureType::Type_2D;
+		desc.Name = path.filename().string().c_str();
+		desc.Layers = 1;
+		desc.Flags = (TextureFlags)(TextureFlags::ShaderInput);
+		desc.SampleCount = Samples::SampleCount_1;
+		desc.Data = pixels;
+		desc.Format = TextureFormat::RGBA8;
+		desc.FilePath = path;
+
+		return Ref<Texture>(new Texture(device, context, desc));
+	}
+
+	Texture::Texture(WeakRef<GraphicsDevice> device, RenderContext context, const TextureDescription& desc)
 		:
 		mWidth(desc.Width),
 		mHeight(desc.Height),
@@ -27,10 +53,13 @@ namespace Mule
 		mType(desc.Type),
 		mSampleCount(desc.SampleCount),
 		mName(desc.Name),
-		mGraphicsDevice(device)
+		mGraphicsDevice(device),
+		Asset(
+			desc.Handle == Asset::NullHandle ? Asset::GenerateHandle() : desc.Handle,
+			desc.FilePath, 
+			AssetType::Texture)
 	{
 		auto diligentDevice = device->GetRenderDevice();
-
 
 		bool isDepth = (desc.Format & TextureFormat::Depth16U) == TextureFormat::Depth16U
 			|| (desc.Format & TextureFormat::Depth24Stencil8) == TextureFormat::Depth24Stencil8
@@ -48,9 +77,9 @@ namespace Mule
 
 		Diligent::BIND_FLAGS bindFlags = Diligent::BIND_FLAGS::BIND_NONE;
 		if (desc.Flags & TextureFlags::RenderTarget)
-			bindFlags |= Diligent::BIND_FLAGS::BIND_RENDER_TARGET;
+			bindFlags |= Diligent::BIND_FLAGS::BIND_RENDER_TARGET | Diligent::BIND_FLAGS::BIND_INPUT_ATTACHMENT;
 
-		if (desc.Flags & TextureFlags::RenderTarget)
+		if (desc.Flags & TextureFlags::ShaderInput)
 			bindFlags |= Diligent::BIND_FLAGS::BIND_SHADER_RESOURCE;
 
 		if (isDepth)
@@ -70,16 +99,25 @@ namespace Mule
 		textureDesc.Format = static_cast<Diligent::TEXTURE_FORMAT>(desc.Format);
 		textureDesc.BindFlags = bindFlags;
 
-		diligentDevice->CreateTexture(textureDesc, nullptr, &mTexture);
+		Diligent::TextureSubResData subResource{};
+		subResource.pData = desc.Data;
+		subResource.Stride = desc.Width * TextureFormatSize(desc.Format);
+
+		Diligent::TextureData textureData{};
+		textureData.NumSubresources = 1;
+		textureData.pSubResources = &subResource;
+		textureData.pContext = context.GetContext();
+
+		diligentDevice->CreateTexture(textureDesc, (desc.Data ? &textureData : nullptr), &mTexture);
 
 		Diligent::TextureViewDesc viewDesc;
 
 		viewDesc.Format = static_cast<Diligent::TEXTURE_FORMAT>(desc.Format);
-		viewDesc.NumMipLevels = 0;
+		viewDesc.NumMipLevels = 1;
 		viewDesc.AccessFlags = Diligent::UAV_ACCESS_UNSPECIFIED;
 		viewDesc.Flags = mMips == 1 ? Diligent::TEXTURE_VIEW_FLAG_NONE : Diligent::TEXTURE_VIEW_FLAG_ALLOW_MIP_MAP_GENERATION;
-		viewDesc.NumDepthSlices = 0;
-		viewDesc.NumArraySlices = 0;
+		viewDesc.NumDepthSlices = 1;
+		viewDesc.NumArraySlices = 1;
 		viewDesc.TextureDim = static_cast<Diligent::RESOURCE_DIMENSION>(desc.Type);
 
 		if (desc.Flags & TextureFlags::RenderTarget && !isDepth)
@@ -106,8 +144,10 @@ namespace Mule
 		
 		if (desc.CreateImGuiTexture)
 		{
-			mImGuiID = static_cast<ImTextureID>(mShaderResourceView);
+			mImGuiID = reinterpret_cast<ImTextureID>(mShaderResourceView.RawPtr());
 		}
+
+		
 	}
 
 	template<typename T>

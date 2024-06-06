@@ -75,6 +75,36 @@ namespace Mule
 
 			win->AddEvent(event);
 		});
+
+		
+		glfwSetCharCallback(mWindow, [](GLFWwindow* window, unsigned int codepoint) {
+			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::Char;
+
+			event->Keyboard.Char = (Key)codepoint;
+
+			win->AddEvent(event);
+			});
+
+		glfwSetWindowCloseCallback(mWindow, [](GLFWwindow* window) {
+			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::Close;
+			event->Window.CloseRequested = true;
+
+			win->AddEvent(event);
+			});
+
+		glfwSetScrollCallback(mWindow, [](GLFWwindow* window, double scrollX, double scrollY) {
+			Window* win = (Window*)glfwGetWindowUserPointer(window);
+			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
+			event->Type = WindowEventType::Scroll;
+			event->Mouse.ScrollXOffset = scrollX;
+			event->Mouse.ScrollYOffset = scrollY;
+
+			win->AddEvent(event);
+			});
 	}
 
 	HWND Window::GetWin32Window()

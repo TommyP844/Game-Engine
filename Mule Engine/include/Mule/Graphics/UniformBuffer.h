@@ -20,8 +20,9 @@ namespace Mule
 	public:
 		static Ref<UniformBuffer> Create(WeakRef<GraphicsDevice> device, const UniformBufferDescription& desc);
 
-		void SetData(void* data, uint32_t size, uint32_t offset = 0);
-		void ReadData(void* data, uint32_t size, uint32_t offset = 0);
+		void SetData(RenderContext context, void* data, uint32_t size, uint32_t offset = 0);
+
+		Diligent::RefCntAutoPtr<Diligent::IBuffer> GetBuffer() const { return mUniformBuffer; }
 
 	private:
 		UniformBuffer(WeakRef<GraphicsDevice> device, const UniformBufferDescription& desc);

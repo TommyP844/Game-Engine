@@ -80,12 +80,13 @@ namespace Mule
 		bool IsEntityValid(entt::entity id);
 
 		void OnUpdate(float dt);
-		void OnRender(float dt);
 
 		SceneRenderSettings& RenderSettings() { return mSettings; }
+		entt::registry& GetRegistry() { return mRegistry; }
 
 	private:
 		entt::registry mRegistry;
+		SceneRenderSettings mSettings;
 
 		Scene(AssetHandle handle, const fs::path& directory);
 		Scene(const fs::path& directory);
@@ -99,6 +100,5 @@ namespace Mule
 
 		YAML::Node SerializeEntityText(Mule::Entity e);
 
-		SceneRenderSettings mSettings;
 	};
 }

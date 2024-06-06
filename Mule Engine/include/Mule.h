@@ -26,11 +26,18 @@
 #include "Mule/Layer.h"
 #include "Mule/Asset/AssetManager.h"
 
+// Graphics
 #include "Mule/Graphics/GraphicsDevice.h"
 #include "Mule/Graphics/GraphicsTypes.h"
 #include "Mule/Graphics/FrameBuffer.h"
 #include "Mule/Graphics/RenderPass.h"
 #include "Mule/Graphics/ImGuiMuleContext.h"
+#include "Mule/Graphics/Material.h"
+#include "Mule/Graphics/Shader.h"
+#include "Mule/Graphics/SceneRenderer.h"
+
+// Serialization
+#include "Serialization/MeshSerializer.h"
 
 #include "imgui.h"
 

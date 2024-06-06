@@ -39,4 +39,21 @@ namespace Mule
 		Write = Diligent::CPU_ACCESS_WRITE,
 		ReadWrite = Diligent::CPU_ACCESS_READ | Diligent::CPU_ACCESS_WRITE
 	};
+
+	static uint32_t TextureFormatSize(TextureFormat format)
+	{
+		switch (format)
+		{
+		case Mule::RGBA8:
+		case Mule::RGBA8_SRGB:
+		case Mule::Depth24Stencil8:
+			return 4;
+		case Mule::Depth16U:
+			return 8;
+		case Mule::Depth32F:
+			return 16;
+		}
+
+		return 0;
+	}
 }

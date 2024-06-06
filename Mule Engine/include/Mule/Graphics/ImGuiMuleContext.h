@@ -33,6 +33,7 @@ namespace Mule
 		void AddEvent(Ref<WindowEvent> event);
 		void BeginFrame(Ref<FrameBuffer> fb = nullptr, int attachmentIndex = 0);
 		void Render();
+		~ImGuiMuleContext();
 	private:
 		ImGuiMuleContext(const ImGuiMuleCreateInfo& info);
 
@@ -42,5 +43,7 @@ namespace Mule
 		RenderContext mContext;
 		WeakRef<GraphicsDevice> mDevice;
 		std::unique_ptr<Diligent::ImGuiImplDiligent> mImGuiImpl;
+
+		std::map<Mule::Key, ImGuiKey> mKeyMapping;
 	};
 }
