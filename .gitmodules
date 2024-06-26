@@ -25,3 +25,7 @@
 [submodule "SubModules/gltf"]
 	path = SubModules/gltf
 	url = https://github.com/syoyo/tinygltf
+[submodule "SubModules/imgui"]
+	path = SubModules/imgui
+	url = https://github.com/ocornut/imgui/
+	branch = docking
