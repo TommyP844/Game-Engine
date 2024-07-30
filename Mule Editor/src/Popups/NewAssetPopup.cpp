@@ -38,7 +38,7 @@ bool NewAssetPopUp::OnImGuiRender(fs::path& path)
 			filename += "." + mExtension;
 		fs::path file = mDirectory / filename;
 
-		ImGui::Text("New Scene");
+		ImGui::Text(mName.c_str());
 		fs::path directory = mDirectory.lexically_relative(mAssetDir);
 		directory = "Assets" / directory / "";
 		ImGui::Text("Directory: %s", directory.string().c_str());

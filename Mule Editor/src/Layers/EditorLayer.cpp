@@ -199,6 +199,7 @@ void EditorLayer::DisplayPopups()
 				Mule::Ref<Mule::Scene> scene = Mule::Scene::Create(path);
 				manager.InsertAsset(scene);
 				mEditorState->ActiveSceneHandle = scene->Handle();
+				scene->Serialize(Mule::SerializationMode::Text);
 			}
 				break;
 			case PopupType::NewMaterial:
@@ -343,6 +344,40 @@ void EditorLayer::DisplayPopups()
 			if (ImGui::Button("Save all"))
 			{
 				// TODO: Save
+				for (auto path : modifiedAssetPaths)
+				{
+					FileType type = TypeFromPath(path);
+					switch (type)
+					{
+					case FileType::Unknown:
+						break;
+					case FileType::Directory:
+						break;
+					case FileType::Scene:
+					{
+						auto scene = manager.GetAssetByFilepath<Mule::Scene>(path);
+						if (scene)
+						{
+							scene->Serialize(Mule::SerializationMode::Text);
+						}
+						else
+						{
+							MULE_LOG_ERROR("Failed to find scene with path: {0}", path);
+						}
+					}
+					break;
+					case FileType::Texture:
+						break;
+					case FileType::Mesh:
+						break;
+					case FileType::Shader:
+						break;
+					case FileType::Material:
+						break;
+					default:
+						break;
+					}
+				}
 				modifiedAssetPaths.clear();
 			}
 		}
