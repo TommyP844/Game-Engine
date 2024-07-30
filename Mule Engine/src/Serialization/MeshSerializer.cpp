@@ -167,7 +167,7 @@ namespace Mule
                 Vertex vertex;
                 vertex.Position = positions[i];
                 vertex.Normal = normals[i];
-                vertex.Tangent = tangents[i];
+                vertex.Tangent = tangents ? tangents[i] : glm::vec3(0.f);
                 vertex.TexCoord_0 = uv_0 ? uv_0[i] : glm::vec2(0.f);
                 vertex.Color = colors ? colors[i] : glm::vec4(0.f);
 

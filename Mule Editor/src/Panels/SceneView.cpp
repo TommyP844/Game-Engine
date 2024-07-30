@@ -1,4 +1,5 @@
 #include "SceneView.h"
+#include "ImGuiUtil.h"
 
 void SceneView::OnAttach()
 {
@@ -52,7 +53,22 @@ void SceneView::OnImGuiRender()
 				mHeight = height;
 				mResizeRequired = true;
 			}
-			ImGui::Image(mRenderer->GetFBImage(0), ImGui::GetContentRegionAvail());
+			ImVec2 fbSize = ImGui::GetContentRegionAvail();
+			ImGui::Image(mRenderer->GetFBImage(0), fbSize);
+			DragDropTarget(SCENE_PATH_PAYLOAD, [&](const ImGuiPayload* payload) {
+				fs::path path = PathFromPayload(payload);
+				Mule::AssetManager& manager = Mule::AssetManager::Get();
+				if (Mule::Ref<Mule::Scene> scene = manager.GetAssetByFilepath<Mule::Scene>(path))
+				{
+					mEditorState->ActiveSceneHandle = scene->Handle();
+				}
+				else
+				{
+					Mule::Ref<Mule::Scene> loadedScene = Mule::Scene::Deserialize(path, Mule::SerializationMode::Text);
+					manager.InsertAsset(loadedScene);
+					mEditorState->ActiveSceneHandle = loadedScene->Handle();
+				}
+				});
 		}
 		ImGui::End();
 		ImGui::PopStyleVar();

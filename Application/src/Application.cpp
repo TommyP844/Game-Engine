@@ -4,13 +4,10 @@
 
 Application::Application(const std::string& name)
 {
-	const int WIDTH = 1600;
-	const int HEIGHT = 900;
-
 	Mule::Log::Initialize(std::cout);
 
 	Mule::Window::Init();
-	mWindow = Mule::Window::Create("Title", WIDTH, HEIGHT);
+	mWindow = Mule::Window::Create("Title", 0, 0);
 
 	mGraphicsDevice = Mule::GraphicsDevice::Create(Mule::GraphicsAPI::Vulkan, mWindow);
 
@@ -18,8 +15,8 @@ Application::Application(const std::string& name)
 	imGuiInfo.Window = mWindow;
 	imGuiInfo.Context = mGraphicsDevice->GetMainThreadContext();
 	imGuiInfo.Device = mGraphicsDevice;
-	imGuiInfo.InitialWidth = WIDTH;
-	imGuiInfo.InitialHeight = HEIGHT;
+	imGuiInfo.InitialWidth = mWindow->GetWidth();
+	imGuiInfo.InitialHeight = mWindow->GetHeight();
 
 	mImGuiContext = Mule::ImGuiMuleContext::Create(imGuiInfo);
 

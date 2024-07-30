@@ -105,7 +105,7 @@ namespace Mule
 
 		Diligent::ImGuiDiligentCreateInfo imguiInfo;
 
-        ImFont* font = io.Fonts->AddFontFromFileTTF("C:/Dev/Mule/Resources/Fonts/Roboto/Roboto-Black.ttf", 20.f);
+        ImFont* font = io.Fonts->AddFontFromFileTTF("C:/Dev/Mule-Engine/Resources/Fonts/Roboto/Roboto-Black.ttf", 20.f);
         
 
 		auto diligentDevice = mDevice->GetRenderDevice();

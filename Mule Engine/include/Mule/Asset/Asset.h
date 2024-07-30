@@ -75,6 +75,7 @@ namespace Mule
 		fs::path Filepath() const { return mDirectory / mFileName; }
 		AssetType Type() const { return mType; }
 		uint64_t LastWriteTime() const { return mAssetVersion; }
+		void SetDirectory(const fs::path& path);
 
 		void ClearModified() { mModified = false; }
 		void SetModified() { mModified = true; }
@@ -87,11 +88,6 @@ namespace Mule
 		{
 			mName = name;
 			mFileName = name + mFileName.substr(mFileName.find_last_of("."));
-		}
-
-		void ChangeDirectory(const fs::path& directory)
-		{
-			mDirectory = directory;
 		}
 
 		static size_t GenerateHandle()

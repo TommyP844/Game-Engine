@@ -37,10 +37,13 @@ static void DisplayEntityHierarchy(Mule::Entity entity, std::set<Mule::Entity>& 
 		if (ImGui::MenuItem("Add Child"))
 		{
 			auto e = entity.GetScene()->CreateEntity();
+			selected.clear();
+			selected.insert(e);
 			entity.AddChild(e);
 		}
 		if (ImGui::MenuItem("Delete"))
 		{
+			selected.erase(entity);
 			entity.Destroy();
 			ImGui::EndPopup();
 			if (open) ImGui::TreePop();
@@ -112,7 +115,9 @@ void SceneHierarchyPanel::OnImGuiRender()
 				{
 					if (ImGui::MenuItem("Add Entity"))
 					{
-						scene->CreateEntity();
+						auto e = scene->CreateEntity();
+						mEditorState->SelectedEntities.clear();
+						mEditorState->SelectedEntities.insert(e);
 					}
 					ImGui::EndPopup();
 				}

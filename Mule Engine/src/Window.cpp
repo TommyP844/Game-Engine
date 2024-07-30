@@ -25,7 +25,8 @@ namespace Mule
 
 	Window::Window(const char* title, int width, int height)
 	{
-		mWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
+		glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+		mWindow = glfwCreateWindow(800, 600, title, nullptr, nullptr);
 		glfwSetWindowUserPointer(mWindow, this);
 		glfwMakeContextCurrent(mWindow);
 		glfwSwapInterval(0); // disable vsync
@@ -48,7 +49,7 @@ namespace Mule
 			Ref<WindowEvent> event = Ref<WindowEvent>::Make();
 			event->Type = WindowEventType::Key;
 			
-			event->Keyboard.Pressed = action == GLFW_PRESS;
+			event->Keyboard.Pressed = action == GLFW_PRESS || action == GLFW_REPEAT;
 			event->Keyboard.Key = (Key)key;
 
 			win->AddEvent(event);
@@ -120,6 +121,20 @@ namespace Mule
 	bool Window::ShouldClose()
 	{
 		return glfwWindowShouldClose(mWindow);
+	}
+
+	int Window::GetWidth() const
+	{
+		int width;
+		glfwGetWindowSize(mWindow, &width, NULL);
+		return width;
+	}
+
+	int Window::GetHeight() const
+	{
+		int height;
+		glfwGetWindowSize(mWindow, NULL, &height);
+		return height;
 	}
 
 	void Window::AddEvent(Ref<WindowEvent> event)

@@ -114,7 +114,7 @@ void EditorLayer::OnEvent(Mule::Ref<Mule::Event> event)
 void EditorLayer::OnImGuiRender(float dt)
 {
 	ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
-	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), dockspace_flags);
+	ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), dockspace_flags);
 	DisplayMenuBar();
 	DisplayPopups();
 	for (auto& [type, panel] : mPanels)
@@ -173,10 +173,10 @@ void EditorLayer::DisplayMenuBar()
 		}
 		if (ImGui::BeginMenu("Panels"))
 		{
-			if (ImGui::MenuItem("Components")) mPanels[PanelType::ComponentPanel]->ToggleOpen();
-			if (ImGui::MenuItem("Content Browser")) mPanels[PanelType::ContentBrowserPanel]->ToggleOpen();
-			if (ImGui::MenuItem("Scene Hierarchy")) mPanels[PanelType::SceneHierarchyPanel]->ToggleOpen();
-			if (ImGui::MenuItem("Scene View")) mPanels[PanelType::SceneEditorPanel]->ToggleOpen();
+			if (ImGui::MenuItem("Components", nullptr, mPanels[PanelType::ComponentPanel]->IsOpen())) mPanels[PanelType::ComponentPanel]->ToggleOpen();
+			if (ImGui::MenuItem("Content Browser", nullptr, mPanels[PanelType::ContentBrowserPanel]->IsOpen())) mPanels[PanelType::ContentBrowserPanel]->ToggleOpen();
+			if (ImGui::MenuItem("Scene Hierarchy", nullptr, mPanels[PanelType::SceneHierarchyPanel]->IsOpen())) mPanels[PanelType::SceneHierarchyPanel]->ToggleOpen();
+			if (ImGui::MenuItem("Scene View", nullptr, mPanels[PanelType::SceneEditorPanel]->IsOpen())) mPanels[PanelType::SceneEditorPanel]->ToggleOpen();
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
@@ -353,7 +353,7 @@ void EditorLayer::DisplayPopups()
 
 void EditorLayer::LoadAssetsAsync()
 {
-	std::chrono::milliseconds sleep(5000);
+	std::chrono::milliseconds sleep(1000);
 	while (mLayerAttached)
 	{
 		if (!mAutoLoadAssets)

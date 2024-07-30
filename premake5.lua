@@ -9,30 +9,27 @@ workspace "Mule"
         dir .. "/SubModules/glm/glm",
         dir .. "/SubModules/yaml-cpp/include",
         dir .. "/SubModules/glfw/include",
-        dir .. "/SubModules/DiligentEngine/install/include",
-        dir .. "/SubModules/DiligentEngine/DiligentTools/ThirdParty/imgui",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/include",
+        dir .. "/SubModules/imgui",
         os.getenv("VULKAN_SDK") .. "/include",
         dir .. "/SubModules/stb",
-        dir .. "/SubModules/tinyfd",
         dir .. "/SubModules/gltf"
     }
 
     debugLibs = {
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/glslangd.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/GraphicsEngineVk_64d.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/SPIRVd.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/SPIRV-Tools.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/spirv-cross-cored.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/spirv-cross-glsld.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/OSDependentd.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/GenericCodeGend.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/SPIRV-Tools-opt.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/Archiver_64d.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/MachineIndependentd.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentCore/Debug/DiligentCore.lib",
-        dir .. "/SubModules/DiligentEngine/install/lib/DiligentTools/Debug/DiligentTools.lib"
-
-        
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/glslangd.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/GraphicsEngineVk_64d.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/SPIRVd.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/SPIRV-Tools.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/spirv-cross-cored.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/spirv-cross-glsld.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/OSDependentd.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/GenericCodeGend.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/SPIRV-Tools-opt.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/Archiver_64d.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/MachineIndependentd.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentCore/Debug/DiligentCore.lib",
+        dir .. "/SubModules/DiligentEngine/build/Win64/install/lib/DiligentTools/Debug/DiligentTools.lib"
     }
 
  
@@ -45,5 +42,4 @@ workspace "Mule"
     group "SubModules"
         include "SubModules/yaml-cpp/yaml.lua"
         include "SubModules/glfw/premake5.lua"
-        include "SubModules/tinyfd/tinyfd.lua"
     group ""

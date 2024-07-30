@@ -17,6 +17,9 @@ constexpr const char* SCENE_PATH_PAYLOAD = "Scene-Path";
 constexpr const char* MESH_HANDLE_PAYLOAD = "Mesh-Handle";
 constexpr const char* MODEL_HANDLE_PAYLOAD = "Model-Handle";
 constexpr const char* MODEL_PATH_PAYLOAD = "Model-Path";
+constexpr const char* FILE_PAYLOAD = "File-Payload";
+
+constexpr const char* MULTI_FILE_PAYLOAD = "Multi-File-Payload";
 
 constexpr const char* ENTITY_ID_PAYLOAD = "Entity-ID";
 
@@ -27,10 +30,11 @@ bool Vec3Display(const std::string& name, glm::vec3& vec, const glm::vec3& reset
 void DragDropTarget(const std::string& type, std::function<void(const ImGuiPayload*)> func);
 void DragDropTarget(const std::string& type, std::function<void(const fs::path&)> func);
 void DragDropTarget(const std::string& type, std::function<void(Mule::AssetHandle)> func);
+void DragDropTarget(const std::vector<std::string>& types, std::function<void(const fs::path&)> func);
 
-void DragDropSource(const std::string& type, void* data, int size);
-void DragDropSource(const std::string& type, const std::string& str);
-void DragDropSource(const std::string& type, const fs::path& path);
+bool DragDropSource(const std::string& type, void* data, int size, bool allowNullId = false, std::function<void()> tooltipFunc = nullptr);
+bool DragDropSource(const std::string& type, const std::string& str, bool allowNullId = false, std::function<void()> tooltipFunc = nullptr);
+bool DragDropSource(const std::string& type, const fs::path& path, std::function<void()> tooltipFunc = nullptr);
 
 void DragDropModelToEntity(Mule::Entity e);
 

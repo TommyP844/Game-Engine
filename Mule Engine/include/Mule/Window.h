@@ -30,6 +30,9 @@ namespace Mule
 		void SwapBuffers();
 		bool ShouldClose();
 
+		int GetWidth() const;
+		int GetHeight() const;
+
 		void AddEvent(Ref<WindowEvent> event);
 		const std::vector<Ref<WindowEvent>>& PollEvents();
 	private:

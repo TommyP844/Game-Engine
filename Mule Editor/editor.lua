@@ -32,8 +32,7 @@ project "Mule Editor"
 		"Application",
 		"Mule Engine",
 		"glfw",
-		"yaml-cpp",
-		"tinyfd"
+		"yaml-cpp"
 	}
 
 	files

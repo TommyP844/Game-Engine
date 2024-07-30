@@ -59,8 +59,8 @@ ThumbnailManager::ThumbnailManager(Mule::Ref<Mule::GraphicsDevice> device, Mule:
 	mRenderThread = std::thread(&ThumbnailManager::Render, this);
 
 	// TODO: finis	
-	mFileTexture = Mule::Texture::Create(mDevice, mContext, "C:\\Dev\\Mule\\Resources\\Textures\\file.png");
-	mFolderTexture = Mule::Texture::Create(mDevice, mContext, "C:\\Dev\\Mule\\Resources\\Textures\\folder.png");
+	mFileTexture = Mule::Texture::Create(mDevice, mContext, "C:\\Dev\\Mule-Engine\\Resources\\Textures\\file.png");
+	mFolderTexture = Mule::Texture::Create(mDevice, mContext, "C:\\Dev\\Mule-Engine\\Resources\\Textures\\folder.png");
 }
 
 ThumbnailManager::~ThumbnailManager()

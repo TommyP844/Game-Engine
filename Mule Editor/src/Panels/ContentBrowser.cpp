@@ -37,7 +37,15 @@ void ContentBrowser::OnImGuiRender()
 	{
 		if (ImGui::Begin(Name().c_str(), &mIsOpen))
 		{
-
+			bool window_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_ChildWindows);
+			bool any_item_hovered = ImGui::IsAnyItemHovered();
+			bool mouse_clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+			if ((window_hovered && !any_item_hovered && mouse_clicked) || (!window_hovered && mouse_clicked))
+			{
+				mSelectedFiles.clear();
+				RenameFile();
+				mLastSelectedPath = fs::path();
+			}
 			float width = ImGui::GetContentRegionAvail().x;
 			float windowPadding = ImGui::GetStyle().WindowPadding.x;
 			if (ImGui::BeginChild("Folders", { width * 0.15f - 1.f * windowPadding, 0 }, ImGuiChildFlags_Border))
@@ -56,7 +64,18 @@ void ContentBrowser::OnImGuiRender()
 							mBrowserDirectory = path.path();
 							mShouldSearch = false;
 							memset(mSearchBuffer, 0, 256);
+							mSelectedFiles.clear();
+							RenameFile();
 						}
+
+						DragDropTarget({ std::string(MULTI_FILE_PAYLOAD), SCENE_PATH_PAYLOAD }, [&](const fs::path& directory) {
+							fs::path newPath = path / directory.filename();
+							fs::rename(directory, newPath);
+							});
+						DragDropTarget(MULTI_FILE_PAYLOAD, [&](const ImGuiPayload* payload) {
+							MoveSelectedFiles(path);
+							});
+						
 					}
 				}
 			}
@@ -64,6 +83,7 @@ void ContentBrowser::OnImGuiRender()
 			ImGui::SameLine();
 			if (ImGui::BeginChild("Content", { width * 0.85f, 0 }, ImGuiChildFlags_Border))
 			{
+				ImGui::Text("Last Selected: %s", mLastSelectedPath.string().c_str());
 				auto assetDir = mBrowserDirectory.lexically_relative(mAssetPath.parent_path());
 				ImGui::Text("Path:");
 				ImGui::SameLine();
@@ -75,17 +95,21 @@ void ContentBrowser::OnImGuiRender()
 					iterativePath /= file;
 					ImGui::SameLine();
 
-					if (mBrowserDirectory.filename() == file)
+					if (ImGui::Button(breadCrumb.c_str()))
 					{
-						ImGui::Text(breadCrumb.c_str());
-					}
-					else if (ImGui::Button(breadCrumb.c_str()))
-					{
-						//mBrowserDirectory = mEditorState.ProjectPath / iterativePath;
-						//mBrowserDirectory = mAssetPath / iterativePath;
+						mBrowserDirectory = mAssetPath.parent_path() / iterativePath;
 						mShouldSearch = false;
 						memset(mSearchBuffer, 0, 256);
+						mSelectedFiles.clear();
 					}
+					if(!mSelectedFiles.contains(mAssetPath.parent_path() / iterativePath))
+						DragDropTarget(SCENE_PATH_PAYLOAD, [&](const fs::path& directory) {
+						fs::path newPath = mAssetPath.parent_path() / iterativePath / directory.filename();
+						fs::rename(directory, newPath);
+							});
+					DragDropTarget(MULTI_FILE_PAYLOAD, [&](const fs::path& directory) {
+						MoveSelectedFiles(mAssetPath.parent_path() / iterativePath);
+						});
 
 					ImGui::SameLine();
 					ImGui::Text("\\");
@@ -139,11 +163,17 @@ void ContentBrowser::OnImGuiRender()
 					const float maxWidth = ImGui::GetContentRegionAvail().x;
 					const float padding = ImGui::GetStyle().ItemSpacing.x;
 					float total = mFileWidth;
-					for (auto& dir : fs::directory_iterator(mBrowserDirectory))
-					{
-						if (!dir.is_directory())
-							continue;
 
+					std::vector<fs::directory_entry> paths;
+					for (auto& dir : fs::directory_iterator(mBrowserDirectory))
+						paths.push_back(dir);
+					std::sort(paths.begin(), paths.end(), [](const fs::directory_entry& lhs, const fs::directory_entry& rhs)
+						{
+							return (int)lhs.is_directory() > (int)rhs.is_directory();
+						});
+
+					for (auto& dir : paths)
+					{
 						if (mShouldSearch)
 						{
 							if (!FuzzySearch(mSearchString, dir.path().filename().string(), 3))
@@ -154,60 +184,118 @@ void ContentBrowser::OnImGuiRender()
 
 						total += mFileWidth + padding;
 
-						bool doubleClicked = DisplayFile(dir);
+						bool clicked = false, doubleClicked = false;
+						DisplayFile(dir, clicked, doubleClicked);
 
-						if (doubleClicked)
+						if(dir.is_directory())
 						{
-							mBrowserDirectory = dir.path();
-						}
-						if (total >= maxWidth)
-						{
-							total = mFileWidth;
-						}
-						else
-						{
-							ImGui::SameLine();
-						}
-					}
-					for (auto& dir : fs::directory_iterator(mBrowserDirectory))
-					{
-						if (dir.is_directory())
-							continue;
-
-						if (mShouldSearch)
-						{
-							if (!FuzzySearch(mSearchString, dir.path().filename().string(), 3))
+							DragDropTarget(SCENE_PATH_PAYLOAD, [&](const fs::path& directory) {
+								fs::path newPath = dir.path() / directory.filename();
+								fs::rename(directory, newPath);
+								});
+							DragDropTarget(MULTI_FILE_PAYLOAD, [&](const ImGuiPayload* payload) {
+								MoveSelectedFiles(dir.path());
+								});
+							if (doubleClicked)
 							{
-								continue;
+								mBrowserDirectory = dir.path();
+								mSelectedFiles.clear();
+								mLastSelectedPath = fs::path();
 							}
 						}
+						bool payloadSet = false;
+						if (mSelectedFiles.size() > 1)
+						{
+							DragDropSource(MULTI_FILE_PAYLOAD, nullptr, 0, true, [&]() {
+								float totalTemp = mFileWidth;
 
-						total += mFileWidth + padding;
-						DisplayFile(dir);
-						FileType type = TypeFromPath(dir);
-						switch (type)
-						{
-						case FileType::Scene:
-							DragDropSource(SCENE_PATH_PAYLOAD, dir.path());
-							break;
-						case FileType::Texture:
-							break;
-						case FileType::Mesh:
-							DragDropSource(MODEL_PATH_PAYLOAD, dir.path());
-							break;
-						case FileType::Shader:
-							break;
-						case FileType::Material:
-							break;
-						}
-						if (total >= maxWidth)
-						{
-							total = mFileWidth;
+								for (const fs::path& path : mSelectedFiles)
+								{
+									totalTemp += mFileWidth + padding;
+									bool a, b;
+									fs::directory_entry entry;
+									entry.assign(path);
+									DisplayFile(entry, a, b);
+									if (totalTemp >= maxWidth)
+										totalTemp = mFileWidth;
+									else
+										ImGui::SameLine();
+								}
+								});
 						}
 						else
 						{
-							ImGui::SameLine();
+							const char* payloadType = nullptr;
+							switch (TypeFromPath(dir))
+							{
+							case FileType::Scene: payloadType = SCENE_PATH_PAYLOAD; break;
+							default: payloadType = FILE_PAYLOAD; break;
+							}
+							DragDropSource(payloadType, dir.path(), [&, this]() {
+								bool a, b;
+								DisplayFile(dir, a, b);
+								});
 						}
+
+						bool ctrl = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
+						bool shift = ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift);
+						if (ImGui::IsItemHovered() && ctrl && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+						{
+							if (mSelectedFiles.contains(dir.path()))
+							{
+								mSelectedFiles.erase(dir.path());
+								mLastSelectedPath = fs::path();
+							}
+							else
+							{
+								mSelectedFiles.insert(dir.path());
+								mLastSelectedPath = dir.path();
+							}
+						}
+						else if (ImGui::IsItemHovered() && shift && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+						{
+							if (mLastSelectedPath.empty()) // select all paths until this one
+							{
+								mSelectedFiles.clear();
+								for (auto& path : paths)
+								{
+									mSelectedFiles.insert(path);
+									if (path == dir.path())
+										break;
+								}
+							}
+							else
+							{
+								auto begin = std::find(paths.begin(), paths.end(), mLastSelectedPath);
+								auto end = std::find(paths.begin(), paths.end(), dir.path());
+								if (begin > end)
+								{
+									auto temp = begin;
+									begin = end;
+									end = temp;
+								}
+								for (auto it = begin; it <= end; it++)
+								{
+									mSelectedFiles.insert(*it);
+								}
+
+							}
+						}
+						else if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+						{
+							bool exists = mSelectedFiles.contains(dir.path());
+							mSelectedFiles.clear();
+							if (!exists)
+							{
+								mSelectedFiles.insert(dir.path());
+								mLastSelectedPath = dir.path();
+							}
+						}
+						
+						if (total >= maxWidth)
+							total = mFileWidth;
+						else
+							ImGui::SameLine();
 					}
 					ImGui::PopStyleVar();
 				}
@@ -228,21 +316,65 @@ static ImU32 Vec4ToImCol32(const ImVec4& color) {
 	);
 }
 
-bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
+void ContentBrowser::MoveSelectedFiles(const fs::path& path)
+{
+	Mule::AssetManager& manager = Mule::AssetManager::Get();
+	for (const auto& p : mSelectedFiles)
+	{
+		fs::path newPath = path / p.filename();
+
+		Mule::Ref<Mule::Asset> asset = manager.GetAssetByFilepath<Mule::Asset>(path);
+		if (asset)
+		{
+			asset->SetDirectory(path);
+		}
+
+
+		fs::rename(p, newPath);
+	}
+	mSelectedFiles.clear();
+}
+
+// TODO: Rename Asset
+void ContentBrowser::RenameFile()
+{
+	mRenameInProgress = false;
+	std::string ext = mRenamePath.extension().string();
+	std::string newFilename = mRenameBuffer;
+
+	if (!newFilename.ends_with(ext))
+	{
+		newFilename += ext;
+	}
+
+	const std::regex pattern("^[a-zA-Z0-9_\\.\\-\\(\\) ]+$");
+	if (std::regex_match(newFilename, pattern))
+	{
+		fs::rename(mRenamePath, mRenamePath.parent_path() / newFilename);
+		mRenamePath = fs::path();
+		memset(mRenameBuffer, 0, 256);
+	}
+}
+
+void ContentBrowser::DisplayFile(const fs::directory_entry& entry, bool& clicked, bool& doubleClicked)
 {
 	FileType type = TypeFromPath(entry);
 
 	const float borderWidth = 2.f;
-	const float height = 200.f;
+	const float height = 225.f;
 	const float textPadding = 5.f;
 	ImVec4 tintColor = ImVec4(0, 0, 0, 0);
 	const ImVec4 selectedColor = ImVec4(0.1f, 0.1f, 0.1f, 0.3f);
 	
-	ImGui::BeginGroup();
-
 	auto cursor = ImGui::GetCursorScreenPos();
 
-	bool ret = false;
+	ImRect rect;
+	rect.Min = cursor;
+	rect.Max = { cursor.x + mFileWidth, cursor.y + height };
+	ImGui::ItemAdd(rect, (ImGuiID)&entry.path());
+	
+	ImGui::BeginGroup();
+
 	ImGui::InvisibleButton(entry.path().string().c_str(), { mFileWidth, height }, ImGuiButtonFlags_PressedOnClick | ImGuiButtonFlags_MouseButtonLeft);
 	if (ImGui::IsItemHovered())
 	{
@@ -252,27 +384,21 @@ bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
 	{
 		tintColor = ImVec4(0.1f, 0.1f, 0.1f, 0.3f);
 	}
+	if (mSelectedFiles.contains(entry.path()))
+	{
+		tintColor = ImVec4(0.1f, 0.1f, 0.9f, 0.25f);
+	}
 
-	ret = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered();
+	clicked = ImGui::IsItemClicked();
+	doubleClicked = ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered();
 
 	Mule::AssetManager& manager = Mule::AssetManager::Get();
 	if (ImGui::BeginPopupContextItem(entry.path().filename().string().c_str()))
 	{
-		if (ImGui::MenuItem("Edit"))
-		{
-			switch (type)
-			{
-			case FileType::Shader:
-			case FileType::Unknown:
-				break;
-			case FileType::Material:
-			{
-			}
-				break;
-			}
-		}
+		mRenamePath = fs::path();
 		if (ImGui::MenuItem("Rename"))
 		{
+			mRenameInProgress = true;
 			mRenamePath = entry.path();
 			memcpy(mRenameBuffer, mRenamePath.filename().string().c_str(), mRenamePath.filename().string().size());
 		}
@@ -315,24 +441,9 @@ bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
 			mRenameBuffer, 256,
 			ImGuiInputTextFlags_EnterReturnsTrue))
 		{
-			// todo: handle file extension
-			std::string ext = mRenamePath.extension().string();
-			std::string newFilename = mRenameBuffer;
-			
-			if (!newFilename.ends_with(ext))
-			{
-				newFilename += ext;
-			}
-
-			const std::regex pattern("^[a-zA-Z0-9_\\.\\-\\(\\)]+$");
-			if (std::regex_match(newFilename, pattern))
-			{
-				fs::rename(mRenamePath, mRenamePath.parent_path() / newFilename);
-				mRenamePath = fs::path();
-				memset(mRenameBuffer, 0, 256);
-			}
+			mRenameInProgress = false;
+			RenameFile();			
 		}
-		else
 		ImGui::SetKeyboardFocusHere(-1);
 	}
 	else
@@ -345,17 +456,8 @@ bool ContentBrowser::DisplayFile(const fs::directory_entry& entry)
 		ImGui::GetWindowDrawList()->AddRectFilled(cursor, ImVec2(cursor.x + mFileWidth, cursor.y + height), Vec4ToImCol32(tintColor));
 	}
 
-	// If we are renaming and click away then cancel
-	//if (!ImGui::IsItemFocused() && mRenamePath == entry.path())
-	//{
-	//	mRenamePath = fs::path();
-	//	memset(mRenameBuffer, 0, 256);
-	//}
-
 	// End group
 	ImGui::EndGroup();
-
-	return ret;
 }
 
 bool ContentBrowser::FuzzySearch(const std::string& searchString, const std::string& directory, int threshold)

@@ -1,7 +1,5 @@
 #include "NewAssetPopup.h"
 
-#include "tinyfiledialogs.h"
-
 #include "Util.h"
 
 NewAssetPopUp::NewAssetPopUp(const std::string& name, const fs::path& assetDirectory, const fs::path& defaultDirectory, const std::string assetExtension)

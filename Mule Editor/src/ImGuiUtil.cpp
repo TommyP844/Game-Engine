@@ -108,6 +108,22 @@ void DragDropTarget(const std::string& type, std::function<void(Mule::AssetHandl
 	}
 }
 
+void DragDropTarget(const std::vector<std::string>& types, std::function<void(const fs::path&)> func)
+{
+	for (const auto& type : types)
+	{
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type.c_str()))
+			{
+				fs::path path = PathFromPayload(payload);
+				func(path);
+			}
+			ImGui::EndDragDropTarget();
+		}
+	}
+}
+
 std::string StrFromPayload(const ImGuiPayload* payload)
 {
 	return std::string((char*)payload->Data, payload->DataSize);
@@ -118,31 +134,43 @@ fs::path PathFromPayload(const ImGuiPayload* payload)
 	return std::string((char*)payload->Data, payload->DataSize);
 }
 
-void DragDropSource(const std::string& type, void* data, int size)
+bool DragDropSource(const std::string& type, void* data, int size, bool allowNullId, std::function<void()> tooltipFunc)
 {
-	if (ImGui::BeginDragDropSource())
+	bool ret = false;
+	if (ImGui::BeginDragDropSource(allowNullId ? ImGuiDragDropFlags_SourceAllowNullID : 0))
 	{
-		ImGui::SetDragDropPayload(type.c_str(), data, size);
+		ret = ImGui::SetDragDropPayload(type.c_str(), data, size);
+		if (tooltipFunc)
+			tooltipFunc();
 		ImGui::EndDragDropSource();
 	}
+	return ret;
 }
 
-void DragDropSource(const std::string& type, const std::string& str)
+bool DragDropSource(const std::string& type, const std::string& str, bool allowNullId, std::function<void()> tooltipFunc)
 {
-	if (ImGui::BeginDragDropSource())
+	bool ret = false;
+	if (ImGui::BeginDragDropSource(allowNullId ? ImGuiDragDropFlags_SourceAllowNullID : 0))
 	{
-		ImGui::SetDragDropPayload(type.c_str(), str.data(), str.size());
+		ret = ImGui::SetDragDropPayload(type.c_str(), str.data(), str.size());
+		if (tooltipFunc)
+			tooltipFunc();
 		ImGui::EndDragDropSource();
 	}
+	return ret;
 }
 
-void DragDropSource(const std::string& type, const fs::path& path)
+bool DragDropSource(const std::string& type, const fs::path& path, std::function<void()> tooltipFunc)
 {
+	bool ret = false;
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
 	{
-		ImGui::SetDragDropPayload(type.c_str(), path.string().data(), path.string().size());
+		ret = ImGui::SetDragDropPayload(type.c_str(), path.string().data(), path.string().size());
+		if (tooltipFunc)
+			tooltipFunc();
 		ImGui::EndDragDropSource();
 	}
+	return ret;
 }
 
 void RecusivlyApplyModelNodeToEntity(Mule::Entity entity, const Mule::MeshNode& node)
