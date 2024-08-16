@@ -7,6 +7,7 @@ project "Mule Editor"
 	staticruntime "Off"
 
 	linkoptions { '/NODEFAULTLIB:"libcpmtd.lib"' }
+	buildoptions {'/MP'}
 
 	
 	defines

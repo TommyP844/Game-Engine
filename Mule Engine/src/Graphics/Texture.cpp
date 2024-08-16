@@ -34,7 +34,7 @@ namespace Mule
 		desc.Name = path.filename().string().c_str();
 		desc.Layers = 1;
 		desc.Flags = (TextureFlags)(TextureFlags::ShaderInput);
-		desc.SampleCount = Samples::SampleCount_1;
+		desc.Samples = 1;
 		desc.Data = pixels;
 		desc.Format = TextureFormat::RGBA8;
 		desc.FilePath = path;
@@ -51,7 +51,7 @@ namespace Mule
 		mMips(1),
 		mFormat(desc.Format),
 		mType(desc.Type),
-		mSampleCount(desc.SampleCount),
+		mSampleCount(desc.Samples),
 		mName(desc.Name),
 		mGraphicsDevice(device),
 		Asset(
@@ -70,9 +70,9 @@ namespace Mule
 
 		Diligent::CPU_ACCESS_FLAGS accessFlags = Diligent::CPU_ACCESS_NONE;
 
-		if (desc.Flags & TextureFlags::CPUReadable)
+		if ((desc.Flags & TextureFlags::CPUReadable) == TextureFlags::CPUReadable)
 			accessFlags |= Diligent::CPU_ACCESS_READ;
-		if (desc.Flags & TextureFlags::CPUWriteable)
+		if ((desc.Flags & TextureFlags::CPUWriteable) == TextureFlags::CPUWriteable)
 			accessFlags |= Diligent::CPU_ACCESS_WRITE;
 
 		Diligent::BIND_FLAGS bindFlags = Diligent::BIND_FLAGS::BIND_NONE;
@@ -94,15 +94,16 @@ namespace Mule
 		textureDesc.CPUAccessFlags = accessFlags;
 		textureDesc.Type = static_cast<Diligent::RESOURCE_DIMENSION>(desc.Type);
 		textureDesc.MipLevels = mMips;
-		textureDesc.SampleCount = static_cast<uint32_t>(desc.SampleCount);
+		textureDesc.SampleCount = desc.Samples;
 		textureDesc.ArraySize = desc.Layers;
 		textureDesc.Format = static_cast<Diligent::TEXTURE_FORMAT>(desc.Format);
 		textureDesc.BindFlags = bindFlags;
+		textureDesc.MiscFlags = mMips > 1 ? Diligent::MISC_TEXTURE_FLAG_GENERATE_MIPS : Diligent::MISC_TEXTURE_FLAG_NONE;
 
 		Diligent::TextureSubResData subResource{};
 		subResource.pData = desc.Data;
 		subResource.Stride = desc.Width * TextureFormatSize(desc.Format);
-
+		
 		Diligent::TextureData textureData{};
 		textureData.NumSubresources = 1;
 		textureData.pSubResources = &subResource;
@@ -119,6 +120,7 @@ namespace Mule
 		viewDesc.NumDepthSlices = 1;
 		viewDesc.NumArraySlices = 1;
 		viewDesc.TextureDim = static_cast<Diligent::RESOURCE_DIMENSION>(desc.Type);
+		viewDesc.AccessFlags = Diligent::UAV_ACCESS_UNSPECIFIED;
 
 		if (desc.Flags & TextureFlags::RenderTarget && !isDepth)
 		{

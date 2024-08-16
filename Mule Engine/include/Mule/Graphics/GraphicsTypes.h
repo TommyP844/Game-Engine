@@ -16,17 +16,6 @@ namespace Mule
 		Depth32F = Diligent::TEXTURE_FORMAT::TEX_FORMAT_D32_FLOAT,
 	};
 
-	enum class Samples : uint32_t
-	{
-		SampleCount_1 = 1,
-		SampleCount_2 = 2,
-		SampleCount_4 = 4,
-		SampleCount_8 = 8,
-		SampleCount_16 = 16,
-		SampleCount_32 = 32,
-		SampleCount_64 = 64
-	};
-
 	enum AttachmentLoadOp
 	{
 		Discard = Diligent::ATTACHMENT_LOAD_OP_DISCARD,

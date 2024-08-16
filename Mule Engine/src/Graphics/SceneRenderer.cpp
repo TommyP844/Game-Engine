@@ -5,6 +5,9 @@
 
 #include "Asset/AssetManager.h"
 
+#include "DiligentFX/PBR/interface/PBR_Renderer.hpp"
+#include "DiligentFX/PBR/interface/GLTF_PBR_Renderer.hpp"
+
 #ifdef min
 #undef min
 #endif
@@ -28,15 +31,9 @@ namespace Mule
 		:
 		mDevice(device)
 	{
-
 		UniformBufferDescription UBODesc;
 		UBODesc.AccessMode = BufferAccess::Write;
 		UBODesc.IsBufferDynamic = true;
-		UBODesc.Name = "Light UBO";
-		UBODesc.Size = sizeof(DirectionalLight) + sizeof(Light) * MAX_LIGHTS;
-
-		mLightUBO = Mule::UniformBuffer::Create(mDevice, UBODesc);
-
 		UBODesc.Name = "Camera UBO";
 		UBODesc.Size = sizeof(CameraData);
 
@@ -52,14 +49,16 @@ namespace Mule
 		FBDesc.Height = 600;
 		FBDesc.BuildForSwapChain = false;
 		FBDesc.Attachments = {
-			FrameBufferAttachment(TextureFormat::RGBA8, (TextureFlags)(TextureFlags::RenderTarget | TextureFlags::ShaderInput), {0.f, 0.f, 0.f, 0.f}),
-			FrameBufferAttachment(TextureFormat::Depth32F, TextureFlags::RenderTarget, {1.f, 0.f, 0.f, 0.f})
+			FrameBufferAttachment(TextureFormat::RGBA8, (TextureFlags)(TextureFlags::RenderTarget | TextureFlags::ShaderInput), {1.f, 0.f, 0.f, 1.f}),
 		};
+		FBDesc.DepthAttachment = FrameBufferAttachment(TextureFormat::Depth24Stencil8, TextureFlags::RenderTarget, { 1.f, 0.f, 0.f, 0.f });
+		FBDesc.HasDepth = true;
 		FBDesc.RenderPass = mRenderPass;
-		FBDesc.SampleCount = Samples::SampleCount_1;
 		FBDesc.Context = context;
 
 		mFramebuffer = FrameBuffer::Create(mDevice, FBDesc);
+
+		mShaderConstant = ShaderConstant::Create(mDevice, context, "Constants", sizeof(glm::mat4));
 	}
 
 	void SceneRenderer::Render(Ref<Scene> scene)
@@ -93,27 +92,29 @@ namespace Mule
 		auto shader = manager.GetAsset<Shader>(DefaultShaderHandle);
 
 		shader->Bind();
-		shader->SetUniformBuffer(Mule::ShaderStage::Vertex, "CameraBuffer", mCameraUBO);
+		shader->SetUniformBuffer(Mule::ShaderStage::Vertex, "UniformBufferObject", mCameraUBO);
 		//shader->SetUniformBuffer(Mule::ShaderStage::Fragment, "LightBuffer", mLightUBO);
 		//shader->BindResources();
 
-		auto meshView = registry.view<MeshComponent>();
+		auto meshView = registry.view<MeshCollectionComponent>();
 		for (auto entityId : meshView)
 		{
 			Entity e(entityId, scene);
-			auto& meshComponent = e.GetComponent<MeshComponent>();
 			auto& transform = e.Transform();
-
 			glm::mat4 trs = transform.TRS();
 			// upload trs
+			mShaderConstant->SetData(trs);
+			shader->SetShaderConstants(ShaderStage::Vertex, mShaderConstant);
+			auto& meshCollection = e.GetComponent<MeshCollectionComponent>();
 
-			//shader->SetShaderVar<float>("PushConstant", Mule::ShaderStage::Vertex, &trs[0][0]);
-
-			auto mesh = manager.GetAsset<Mesh>(meshComponent.MeshHandle);
-			if (mesh)
+			for (const auto& meshComponent : meshCollection.Meshes)
 			{
-				mesh->Bind();
-				mesh->Draw();
+				auto mesh = manager.GetAsset<Mesh>(meshComponent.MeshHandle);
+				if (mesh)
+				{
+					mesh->Bind();
+					mesh->Draw();
+				}
 			}
 		}
 

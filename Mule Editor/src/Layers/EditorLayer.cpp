@@ -25,12 +25,12 @@ void EditorLayer::OnAttach()
 	renderPassDesc.Name = "Default RenderPass";
 	renderPassDesc.Context = mApplicationData->GraphicsDevice->GetMainThreadContext();
 	renderPassDesc.Attachments = {
-		Mule::RenderPassAttachment(Mule::TextureFormat::RGBA8, Mule::Samples::SampleCount_1)
+		Mule::RenderPassAttachment(Mule::TextureFormat::RGBA8, 0)
 	};
 	renderPassDesc.SubPasses = {
 		Mule::RenderPassSubPassDescription({0}, {0}, true)
 	};
-	renderPassDesc.DepthAttachment = Mule::RenderPassAttachment(Mule::TextureFormat::Depth32F, Mule::Samples::SampleCount_1);
+	renderPassDesc.DepthAttachment = Mule::RenderPassAttachment(Mule::TextureFormat::Depth24Stencil8, 0);
 	Mule::Ref<Mule::RenderPass> defaultRenderPass = Mule::RenderPass::Create(
 		mApplicationData->GraphicsDevice,
 		renderPassDesc);
@@ -38,7 +38,7 @@ void EditorLayer::OnAttach()
 	Mule::AssetManager::Get().InsertAsset(defaultRenderPass);
 
 	Mule::AssetManager& manager = Mule::AssetManager::Get();
-	fs::path path = "C:\\Dev\\Mule\\Resources\\Shaders\\PBRShader.shader";
+	fs::path path = "C:\\Dev\\Mule-Engine\\Resources\\Shaders\\PBRHLSL.shader";
 	MULE_LOG_VERBOSE("\tLoading asset: {0}", path);
 	Mule::SourceShaderDescription sourceDesc;
 
@@ -49,6 +49,7 @@ void EditorLayer::OnAttach()
 	sourceDesc.EnableBlending = false;
 	sourceDesc.EnableDepthTest = true;
 	sourceDesc.RenderPass = Mule::AssetManager::Get().GetAsset<Mule::RenderPass>(Mule::DefaultRenderPassHandle); // Issue
+	sourceDesc.VertexLayouts.push_back(Mule::Shader::GetDefaultVertexLayout());
 
 	auto shader = Mule::Shader::Create(sourceDesc);
 	shader->SetHandle(Mule::DefaultShaderHandle);
@@ -59,7 +60,7 @@ void EditorLayer::OnAttach()
 		mApplicationData->GraphicsDevice->GetMainThreadContext()
 	);
 
-	mAssetScanner = std::thread(&EditorLayer::LoadAssetsAsync, this);
+	//mAssetScanner = std::thread(&EditorLayer::LoadAssetsAsync, this);
 
 	PushPanel<ComponentPanel>(PanelType::ComponentPanel, mEditorState);
 	PushPanel<ContentBrowser>(PanelType::ContentBrowserPanel, mEditorState);

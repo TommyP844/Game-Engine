@@ -1,7 +1,8 @@
 #include "Graphics/Shader.h"
 #include "Log.h"
 #include "DiligentCore/Graphics/GraphicsEngine/interface/Shader.h"
-
+#include "DiligentCore/Graphics/GraphicsEngine/interface/Constants.h"
+#include "Graphics/Vertex.h"
 #include <fstream>
 
 namespace Mule
@@ -9,6 +10,38 @@ namespace Mule
 	Ref<Shader> Shader::Create(const SourceShaderDescription& desc)
 	{
 		return Ref<Shader>(new Shader(desc));
+	}
+
+	VertexLayout Shader::GetDefaultVertexLayout()
+	{
+		/*
+		 	struct Vertex
+			{
+			    glm::vec3 Position;
+			    glm::vec2 TexCoord_0;
+			    glm::vec3 Normal;
+			    glm::vec3 Tangent;
+			    // Bi-Tangent can be calculated in shader
+			    glm::vec4 Color;
+			};
+		*/
+
+		VertexLayout layout;
+
+		layout.BufferIndex = 0;
+		layout.PerInstance = false;
+		// Position
+		layout.Attribs.push_back(VertexAttrib(VertexAttribType::FLOAT, 3));
+		// Tex Coord 0
+		layout.Attribs.push_back(VertexAttrib(VertexAttribType::FLOAT, 2));
+		// Normal
+		layout.Attribs.push_back(VertexAttrib(VertexAttribType::FLOAT, 3));
+		// Tangent
+		layout.Attribs.push_back(VertexAttrib(VertexAttribType::FLOAT, 3));
+		// Color
+		layout.Attribs.push_back(VertexAttrib(VertexAttribType::FLOAT, 4));
+
+		return layout;
 	}
 
 	void Shader::Bind()
@@ -48,6 +81,19 @@ namespace Mule
 		ptr->SetArray(&arr, index, 1);
 	}
 
+	void Shader::SetShaderConstants(ShaderStage stage, Ref<ShaderConstant> buffer)
+	{
+		auto var = mPipeline->GetStaticVariableByName((Diligent::SHADER_TYPE)stage, buffer->GetName().c_str());
+		if (var)
+		{
+			var->Set(buffer->GetBuffer());
+		}
+		else
+		{
+			MULE_LOG_ERROR("Failed to find buffer {0} in shader {1}", buffer->GetName(), Name());
+		}
+	}
+
 	void Shader::Reload()
 	{
 	}
@@ -61,9 +107,10 @@ namespace Mule
 		ShaderCI.Source = source.data();
 		ShaderCI.SourceLength = source.length();
 		ShaderCI.Desc.ShaderType = shaderType;
-		//ShaderCI.SourceLanguage = Diligent::SHADER_SOURCE_LANGUAGE_GLSL;
+		ShaderCI.SourceLanguage = Diligent::SHADER_SOURCE_LANGUAGE_HLSL;
 		ShaderCI.LoadConstantBufferReflection = true;
-		//ShaderCI.ShaderCompiler = Diligent::SHADER_COMPILER_GLSLANG;
+		ShaderCI.ShaderCompiler = Diligent::SHADER_COMPILER_DEFAULT;
+		ShaderCI.CompileFlags = Diligent::SHADER_COMPILE_FLAG_NONE;
 
 		Diligent::IDataBlob* blob = nullptr;
 		Diligent::RefCntAutoPtr<Diligent::IShader> shader;
@@ -134,8 +181,13 @@ namespace Mule
 		mVertexShader = CreateShaderFromSource(vertexSource, Diligent::SHADER_TYPE_VERTEX);
 		mFragmentShader = CreateShaderFromSource(fragmentSource, Diligent::SHADER_TYPE::SHADER_TYPE_PIXEL);
 		
-		auto ptr = mVertexShader->GetConstantBufferDesc(0);
-		auto cnt = mVertexShader->GetResourceCount();	
+		int count = mVertexShader->GetResourceCount();
+		for (int i = 0; i < count; i++) {
+			Diligent::ShaderResourceDesc d;
+			mVertexShader->GetResourceDesc(i, d);
+			std::cout << "Name: " <<d.Name << std::endl;
+			std::cout << "Array Size: " <<d.ArraySize << std::endl;
+		}
 
 		Diligent::GraphicsPipelineStateCreateInfo PSOInfo{};
 		PSOInfo.GraphicsPipeline.PrimitiveTopology = Diligent::PRIMITIVE_TOPOLOGY::PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -144,15 +196,27 @@ namespace Mule
 		PSOInfo.GraphicsPipeline.DSVFormat = Diligent::TEXTURE_FORMAT::TEX_FORMAT_D32_FLOAT;
 		PSOInfo.GraphicsPipeline.RasterizerDesc.CullMode = Diligent::CULL_MODE::CULL_MODE_BACK;
 		PSOInfo.GraphicsPipeline.DepthStencilDesc.DepthEnable = true;
-		PSOInfo.GraphicsPipeline.InputLayout.NumElements = 1;
-		Diligent::LayoutElement elements[] =
-		{
-			// Attribute 0 - vertex position
-			Diligent::LayoutElement{0, 0, 3, Diligent::VT_FLOAT32, Diligent::False}
-		};
-		PSOInfo.GraphicsPipeline.InputLayout.LayoutElements = elements;
+		std::vector<Diligent::LayoutElement> elements;
 
-		PSOInfo.PSODesc.ResourceLayout.DefaultVariableType = Diligent::SHADER_RESOURCE_VARIABLE_TYPE_DYNAMIC;
+		for (int i = 0; i < desc.VertexLayouts.size(); i++)
+		{
+			auto& layout = desc.VertexLayouts[i];
+			for (int j = 0; j < layout.Attribs.size(); j++)
+			{
+				auto& attrib = layout.Attribs[j];
+				elements.push_back(Diligent::LayoutElement(
+					j,
+					layout.BufferIndex,
+					attrib.Count, 
+					(Diligent::VALUE_TYPE)attrib.Type,
+					false,
+					layout.PerInstance ? Diligent::INPUT_ELEMENT_FREQUENCY_PER_INSTANCE : Diligent::INPUT_ELEMENT_FREQUENCY_PER_VERTEX));
+			}
+		}
+	
+		PSOInfo.GraphicsPipeline.InputLayout.LayoutElements = elements.data();
+		PSOInfo.GraphicsPipeline.InputLayout.NumElements = elements.size();
+		PSOInfo.PSODesc.ResourceLayout.DefaultVariableType = Diligent::SHADER_RESOURCE_VARIABLE_TYPE_STATIC;
 		PSOInfo.PSODesc.PipelineType = Diligent::PIPELINE_TYPE_GRAPHICS;
 		
 		PSOInfo.pVS = mVertexShader;
@@ -160,6 +224,8 @@ namespace Mule
 		// TODO: add other stages
 
 		diligentDevice->CreateGraphicsPipelineState(PSOInfo, &mPipeline);
-		mPipeline->CreateShaderResourceBinding(&mSRB, true);
+	
+		mPipeline->CreateShaderResourceBinding(&mSRB);
+		int c = mSRB->GetVariableCount(Diligent::SHADER_TYPE_VERTEX);
 	}
 }

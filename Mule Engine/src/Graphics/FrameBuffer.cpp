@@ -19,7 +19,7 @@ namespace Mule
 
 	ImTextureID FrameBuffer::GetAttachmentViewImGui(int index)
 	{
-		return mAttachmentTextures[index]->GetImGuiID();
+		return static_cast<ImTextureID>(mSRAttachmentViews[index]);
 	}
 
 	FrameBuffer::~FrameBuffer()
@@ -29,10 +29,6 @@ namespace Mule
 	FrameBuffer::FrameBuffer(WeakRef<GraphicsDevice> device, const FrameBufferDescription& desc)
 	{
 		Init(device, desc);
-	}
-
-	FrameBuffer::FrameBuffer()
-	{
 	}
 
 	void FrameBuffer::Init(WeakRef<GraphicsDevice> device, const FrameBufferDescription& desc)
@@ -49,52 +45,82 @@ namespace Mule
 
 		if (desc.BuildForSwapChain)
 		{
-			mAttachmentViews.push_back(device->GetSwapChain()->GetCurrentBackBufferRTV());
-			mDepthView = device->GetSwapChain()->GetDepthBufferDSV();
-
-			renderTargetViews = { mAttachmentViews[0], mDepthView};
+			Diligent::ITextureView* view = device->GetSwapChain()->GetCurrentBackBufferRTV();
+			mAttachmentViews.push_back(view);
+			mDepthAttachmentView = device->GetSwapChain()->GetDepthBufferDSV();
+			 
+			renderTargetViews = { mAttachmentViews[0], mDepthAttachmentView };
 		}
 		else
 		{
 			for (int i = 0; i < desc.Attachments.size(); i++)
 			{
-				TextureDescription textureDesc;
+				auto& attachmentDesc = desc.Attachments[i];
 
+				Diligent::TextureDesc textureDesc{};
+				textureDesc.ArraySize = 1;
 				textureDesc.Width = desc.Width;
 				textureDesc.Height = desc.Height;
 				textureDesc.Depth = 1;
-				textureDesc.Layers = 1;
-				textureDesc.SampleCount = desc.SampleCount;
-				textureDesc.Type = TextureType::Type_2D;
-				textureDesc.Format = desc.Attachments[i].Format;
-				textureDesc.Name = desc.Name + " - Attachment " + std::to_string(i);
-				textureDesc.Flags = (TextureFlags)(TextureFlags::RenderTarget | desc.Attachments[i].Flags);
+				textureDesc.Format = static_cast<Diligent::TEXTURE_FORMAT>(attachmentDesc.Format);
+				textureDesc.SampleCount = attachmentDesc.Samples;
+				textureDesc.Type = Diligent::RESOURCE_DIM_TEX_2D;
+				textureDesc.BindFlags = Diligent::BIND_RENDER_TARGET | Diligent::BIND_SHADER_RESOURCE;
 
-				auto attachment = Texture::Create(device, desc.Context, textureDesc);
-				mAttachmentTextures.push_back(attachment);
-				mAttachmentViews.push_back(attachment->GetRenderTargetView());
+				Diligent::RefCntAutoPtr<Diligent::ITexture> texture;
+				diligentDevice->CreateTexture(textureDesc, nullptr, &texture);
+				mAttachmentTextures.push_back(texture);
 
-				bool isDepth = desc.Attachments[i].Format == TextureFormat::Depth16U
-					|| desc.Attachments[i].Format == TextureFormat::Depth24Stencil8
-					|| desc.Attachments[i].Format == TextureFormat::Depth32F;
+				Diligent::TextureViewDesc viewDesc{};
+				viewDesc.ViewType = Diligent::TEXTURE_VIEW_RENDER_TARGET;
+				viewDesc.Flags = Diligent::TEXTURE_VIEW_FLAG_NONE;
+				viewDesc.TextureDim = Diligent::RESOURCE_DIM_TEX_2D;
 
-				Diligent::OptimizedClearValue clearValue;
-				clearValue.Format = static_cast<Diligent::TEXTURE_FORMAT>(desc.Attachments[i].Format);
-				if (isDepth)
-				{
-					renderTargetViews.push_back(attachment->GetDepthView());
-					clearValue.Color[0] = desc.Attachments[i].ClearColor[0];
-					clearValue.Color[1] = desc.Attachments[i].ClearColor[1];
-					clearValue.Color[2] = desc.Attachments[i].ClearColor[2];
-					clearValue.Color[3] = desc.Attachments[i].ClearColor[3];
-					mDepthView = attachment->GetDepthView();
-				}
-				else
-				{
-					clearValue.DepthStencil.Depth = desc.Attachments[i].ClearColor[0];
-					renderTargetViews.push_back(attachment->GetRenderTargetView());
-				}
-				mTextureClearValues.push_back(clearValue);
+				Diligent::RefCntAutoPtr<Diligent::ITextureView> textureView;
+				texture->CreateView(viewDesc, &textureView);
+				mAttachmentViews.push_back(textureView);
+
+				viewDesc.ViewType = Diligent::TEXTURE_VIEW_SHADER_RESOURCE;
+				Diligent::RefCntAutoPtr<Diligent::ITextureView> srTextureView;
+				texture->CreateView(viewDesc, &srTextureView);
+				mSRAttachmentViews.push_back(srTextureView);
+			}
+
+			for (auto& view : mAttachmentViews)
+			{
+				renderTargetViews.push_back(view);
+			}
+
+			// Depth
+			if (desc.HasDepth)
+			{
+				auto& attachmentDesc = desc.DepthAttachment;
+
+				Diligent::TextureDesc textureDesc{};
+				textureDesc.ArraySize = 1;
+				textureDesc.Width = desc.Width;
+				textureDesc.Height = desc.Height;
+				textureDesc.Depth = 1;
+				textureDesc.Format = static_cast<Diligent::TEXTURE_FORMAT>(attachmentDesc.Format);
+				textureDesc.SampleCount = attachmentDesc.Samples;
+				textureDesc.Type = Diligent::RESOURCE_DIM_TEX_2D;
+				textureDesc.BindFlags = Diligent::BIND_DEPTH_STENCIL | Diligent::BIND_SHADER_RESOURCE;
+
+				diligentDevice->CreateTexture(textureDesc, nullptr, &mDepthAttachmentTexture);
+
+				Diligent::TextureViewDesc viewDesc{};
+				viewDesc.ViewType = Diligent::TEXTURE_VIEW_READ_ONLY_DEPTH_STENCIL;
+				viewDesc.Flags = Diligent::TEXTURE_VIEW_FLAG_NONE;
+				viewDesc.TextureDim = Diligent::RESOURCE_DIM_TEX_2D;
+
+				mDepthAttachmentTexture->CreateView(viewDesc, &mDepthAttachmentView);
+
+				viewDesc.ViewType = Diligent::TEXTURE_VIEW_SHADER_RESOURCE;
+				Diligent::RefCntAutoPtr<Diligent::ITextureView> srTextureView;
+				mDepthAttachmentTexture->CreateView(viewDesc, &srTextureView);
+				mSRAttachmentViews.push_back(srTextureView);
+
+				//renderTargetViews.push_back(mDepthAttachmentView);
 			}
 		}
 

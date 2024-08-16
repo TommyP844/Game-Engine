@@ -40,7 +40,7 @@ namespace Mule
 		uint32_t Depth = 1;
 		uint32_t Layers = 1;
 		TextureFormat Format;
-		Samples SampleCount = Samples::SampleCount_1;
+		uint32_t Samples = 0;
 		TextureFlags Flags;
 		TextureType Type;
 		void* Data = nullptr;
@@ -76,7 +76,7 @@ namespace Mule
 		uint32_t GetLayers() const { return mLayers; }
 		uint32_t GetMips() const { return mMips; }
 
-		Samples GetSamples() const { return mSampleCount; }
+		uint32_t GetSamples() const { return mSampleCount; }
 		TextureType GetTextureType() const { return mType; }
 		TextureFormat GetFormat() const { return mFormat; }
 		const std::string& GetName() const { return mName; }
@@ -102,7 +102,7 @@ namespace Mule
 		uint32_t mLayers;
 		uint32_t mMips;
 		TextureFormat mFormat;
-		Samples mSampleCount;
+		uint32_t mSampleCount;
 		TextureFlags mFlags;
 		TextureType mType;
 		uint32_t mTexelSize;

@@ -229,9 +229,12 @@ void ContentBrowser::OnImGuiRender()
 							switch (TypeFromPath(dir))
 							{
 							case FileType::Scene: payloadType = SCENE_PATH_PAYLOAD; break;
+							case FileType::Mesh: payloadType = MODEL_PATH_PAYLOAD; break;
 							default: payloadType = FILE_PAYLOAD; break;
 							}
 							DragDropSource(payloadType, dir.path(), [&, this]() {
+								mSelectedFiles.clear();
+								mSelectedFiles.insert(dir.path());
 								bool a, b;
 								DisplayFile(dir, a, b);
 								});

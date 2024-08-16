@@ -11,6 +11,7 @@ project "Application"
 	intrinsics "On"
 
 	linkoptions { '/NODEFAULTLIB:"libcpmtd.lib"' }
+	buildoptions {'/MP'}
 
 	
 	defines

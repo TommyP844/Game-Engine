@@ -29,14 +29,14 @@ namespace Mule
 	struct RenderPassAttachment
 	{
 		RenderPassAttachment() = default;
-		RenderPassAttachment(TextureFormat format, Samples samples)
+		RenderPassAttachment(TextureFormat format, uint32_t samples)
 			:
 			Format(format),
 			SampleCount(samples)
 		{}
 
 		TextureFormat Format;
-		Samples SampleCount;
+		uint32_t SampleCount;
 	};
 
 	struct RenderPassDescription

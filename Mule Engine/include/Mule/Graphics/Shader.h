@@ -8,6 +8,7 @@
 #include "DiligentCore/Graphics/GraphicsTools/interface/MapHelper.hpp"
 #include "UniformBuffer.h"
 #include "Texture.h"
+#include "ShaderConstant.h"
 
 #include <filesystem>
 
@@ -15,6 +16,27 @@ namespace fs = std::filesystem;
 
 namespace Mule
 {
+
+	enum VertexAttribType
+	{
+		FLOAT = Diligent::VALUE_TYPE::VT_FLOAT32,
+		INT = Diligent::VALUE_TYPE::VT_INT32
+	};
+
+	struct VertexAttrib
+	{
+		VertexAttrib(VertexAttribType type, int count) : Type(type), Count(count) {}
+		VertexAttribType Type;
+		int Count;
+	};
+
+	struct VertexLayout
+	{
+		bool PerInstance = false;
+		int BufferIndex;
+		std::vector<VertexAttrib> Attribs;
+	};
+
 	struct SourceShaderDescription
 	{
 		RenderContext Context;
@@ -24,6 +46,8 @@ namespace Mule
 		bool EnableBlending;
 		bool EnableDepthTest;
 		uint32_t SubPassIndex;
+
+		std::vector<VertexLayout> VertexLayouts;
 
 		std::string Name;
 		fs::path Path;
@@ -40,19 +64,14 @@ namespace Mule
 	public:
 		static Ref<Shader> Create(const SourceShaderDescription& desc);
 
+		static VertexLayout GetDefaultVertexLayout();
+
 		void Bind();
 		void BindResources();
 		void SetUniformBuffer(ShaderStage stage, const std::string& bufferName, Ref<UniformBuffer> buffer);
 		void SetTexture(const std::string& name, Ref<Texture> texture);
 		void SetArrayTexture(const std::string& name, Ref<Texture> texture, int index);
-
-		template<typename T>
-		void SetShaderVar(const std::string& name, ShaderStage stage, T& data)
-		{
-			auto buffer = mConstantBuffers[stage];
-			Diligent::MapHelper<T> Constants(mContext.GetContext(), buffer, Diligent::MAP_WRITE, Diligent::MAP_FLAG_DISCARD);
-			*Constants = data;
-		}
+		void SetShaderConstants(ShaderStage stage, Ref<ShaderConstant> buffer);
 
 		void Reload();
 

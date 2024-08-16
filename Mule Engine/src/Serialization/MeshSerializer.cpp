@@ -1,6 +1,7 @@
 #include "Serialization/MeshSerializer.h"
 #include "Asset/AssetManager.h"
 #include "Graphics/Mesh.h"
+#include "Graphics/Vertex.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define TINYGLTF_IMPLEMENTATION
@@ -141,16 +142,6 @@ namespace Mule
 
     std::vector<AssetHandle> LoadNodeMeshes(tinygltf::Model& model, tinygltf::Mesh& mesh, const glm::mat4& offsetMatrix, WeakRef<GraphicsDevice> device)
     {
-        struct Vertex
-        {
-            glm::vec3 Position;
-            glm::vec2 TexCoord_0;
-            glm::vec3 Normal;
-            glm::vec3 Tangent;
-            // Bi-Tangent can be calculated in shader
-            glm::vec4 Color;
-        };
-
         std::vector<AssetHandle> Meshes;
 
         for (auto& primitive : mesh.primitives) {

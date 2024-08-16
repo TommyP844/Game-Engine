@@ -148,7 +148,7 @@ namespace Mule
 				ref.State = Diligent::RESOURCE_STATE::RESOURCE_STATE_COMMON;
 				outputAttachmentRefs[j] = ref;
 
-				if (desc.Attachments[ref.AttachmentIndex].SampleCount != Samples::SampleCount_1)
+				if (desc.Attachments[ref.AttachmentIndex].SampleCount != 0)
 					msaaInPass = true;
 			}
 			subpassDesc.RenderTargetAttachmentCount = subPass.OutputAttachments.size();
